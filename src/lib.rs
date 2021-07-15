@@ -76,11 +76,11 @@ pub struct Config {
     output_file: Option<File>,
     // The ID of the room who's state is being compressed
     room_id: String,
-    // The group to start compressing from 
+    // The group to start compressing from
     // N.B. THIS STATE ITSELF IS NOT COMPRESSED!!!
-    // Note there is no state 0 so if want to start 
+    // Note there is no state 0 so if want to start
     min_state_group: Option<i64>,
-    // How many groups to do the compression on 
+    // How many groups to do the compression on
     // Note: State groups within the range specified will get compressed
     // if they are in the state_groups table. States that only appear in
     // the edges table MIGHT NOT get compressed - it is assumed that these

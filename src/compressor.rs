@@ -36,14 +36,14 @@ use string_cache::DefaultAtom as Atom;
 use super::{collapse_state_maps, StateGroupEntry};
 
 /// Holds information about a particular level.
-struct Level {
+pub struct Level {
     /// The maximum size this level is allowed to be
-    max_length: usize,
+    pub max_length: usize,
     /// The (approximate) current chain length of this level. This is equivalent
     /// to recursively following `current`
-    current_chain_length: usize,
+    pub current_chain_length: usize,
     /// The head of this level
-    current: Option<i64>,
+    pub current: Option<i64>,
 }
 
 impl Level {
@@ -53,6 +53,15 @@ impl Level {
             max_length,
             current_chain_length: 0,
             current: None,
+        }
+    }
+
+    /// Creates a new level from stored state
+    pub fn restore(max_length: usize, current_chain_length: usize, current: Option<i64>) -> Level {
+        Level {
+            max_length,
+            current_chain_length,
+            current,
         }
     }
 
@@ -105,7 +114,7 @@ pub struct Stats {
 pub struct Compressor<'a> {
     original_state_map: &'a BTreeMap<i64, StateGroupEntry>,
     pub new_state_group_map: BTreeMap<i64, StateGroupEntry>,
-    levels: Vec<Level>,
+    pub levels: Vec<Level>,
     pub stats: Stats,
 }
 
@@ -146,7 +155,7 @@ impl<'a> Compressor<'a> {
             if !entry.in_range {
                 let new_entry = StateGroupEntry {
                     // in_range is kept the same so that the new entry is equal to the old entry
-                    // otherwise it might trigger a useless database transaction 
+                    // otherwise it might trigger a useless database transaction
                     in_range: entry.in_range,
                     prev_state_group: entry.prev_state_group,
                     state_map: entry.state_map.clone(),
@@ -154,10 +163,7 @@ impl<'a> Compressor<'a> {
                 // Paranoidly assert that not making changes to this entry
                 // could probably be removed...
                 assert!(new_entry == *entry);
-                self.new_state_group_map.insert(
-                    state_group,
-                    new_entry,
-                );
+                self.new_state_group_map.insert(state_group, new_entry);
 
                 continue;
             }

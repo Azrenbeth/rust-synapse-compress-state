@@ -21,7 +21,11 @@ use std::{
     borrow::Cow,
     collections::BTreeMap,
     fmt,
+    fs::File,
+    io::{BufRead, BufReader, Write},
 };
+
+use crate::compressor::{Compressor, Level};
 
 use super::StateGroupEntry;
 
@@ -56,11 +60,12 @@ pub fn get_data_from_db(
     let mut client = Client::connect(db_url, connector).unwrap();
 
     // Search for the group id of the groups_to_compress'th group after min_state_group
-    // If this is saved, then the compressor can continue by having min_state_group being 
+    // If this is saved, then the compressor can continue by having min_state_group being
     // set to this maximum
     let max_group_found = find_max_group(&mut client, room_id, min_state_group, groups_to_compress);
 
-    let mut state_group_map = get_initial_data_from_db(&mut client, room_id, min_state_group, max_group_found);
+    let mut state_group_map =
+        get_initial_data_from_db(&mut client, room_id, min_state_group, max_group_found);
 
     println!("Got initial state from database. Checking for any missing state groups...");
 
@@ -185,7 +190,10 @@ fn get_initial_data_from_db(
     // otherwise it is assumed that ALL groups should be fetched
     let mut rows = if let Some(min) = min_state_group {
         let params: Vec<&dyn ToSql> = vec![&room_id, &min, &max_group_found];
-        client.query_raw(format!(r"{} AND m.id > $2 AND m.id <= $3", sql).as_str(), params)
+        client.query_raw(
+            format!(r"{} AND m.id > $2 AND m.id <= $3", sql).as_str(),
+            params,
+        )
     } else {
         client.query_raw(sql, &[room_id])
     }
@@ -245,7 +253,7 @@ fn get_missing_from_db(
     max_group_found: i64,
 ) -> BTreeMap<i64, StateGroupEntry> {
     // "Due to reasons" it is possible that some states only appear in edges table and not in state_groups table
-    // so since we know the IDs we're looking for as they are the missing predecessors, we can find them by 
+    // so since we know the IDs we're looking for as they are the missing predecessors, we can find them by
     // left joining onto the edges table (instead of the state_group table!)
     let sql = r#"
         SELECT target.prev_state_group, source.prev_state_group, state.type, state.state_key, state.event_id
@@ -255,12 +263,7 @@ fn get_missing_from_db(
         WHERE target.prev_state_group = ANY($1)
     "#;
 
-    let mut rows = client
-        .query_raw(
-            sql,
-            &[missing_sgs],
-        )
-        .unwrap();
+    let mut rows = client.query_raw(sql, &[missing_sgs]).unwrap();
 
     let mut state_group_map: BTreeMap<i64, StateGroupEntry> = BTreeMap::new();
 
@@ -286,9 +289,50 @@ fn get_missing_from_db(
                 row.get::<_, String>(4).into(),
             );
         }
-    }    
+    }
 
     state_group_map
+}
+
+pub fn store_compressor_state(comp: &Compressor) {
+    let mut save_file = File::create("compressor_state.csv").unwrap();
+
+    for level in comp.levels.iter() {
+        let mut current_head = -1;
+        if let Some(g) = level.current {
+            current_head = g;
+        }
+        writeln!(
+            save_file,
+            // max;len;curr
+            "{};{};{}",
+            level.max_length,
+            level.current_chain_length,
+            current_head,
+        )
+        .unwrap();
+    }
+}
+
+pub fn load_compressor_state() -> Vec<Level> {
+    let save_file = File::open("compressor_state.csv").unwrap();
+    let mut levels = Vec::new();
+    for level_save in BufReader::new(save_file).lines() {
+        let level_save = level_save.unwrap();
+        let mut line = level_save.split(';');
+
+        let max: usize = line.next().unwrap().parse().unwrap();
+        let len: usize = line.next().unwrap().parse().unwrap();
+        let curr: i64 = line.next().unwrap().parse().unwrap();
+
+        let mut curr = Some(curr);
+        if let Some(-1) = curr {
+            curr = None
+        }
+        
+        levels.push(Level::restore(max, len, curr));
+    }
+    levels
 }
 
 /// Helper function that escapes the wrapped text when writing SQL
