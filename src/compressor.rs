@@ -36,6 +36,7 @@ use string_cache::DefaultAtom as Atom;
 use super::{collapse_state_maps, StateGroupEntry};
 
 /// Holds information about a particular level.
+#[derive(Debug)]
 pub struct Level {
     /// The maximum size this level is allowed to be
     pub max_length: usize,
@@ -116,6 +117,7 @@ pub struct Compressor<'a> {
     pub new_state_group_map: BTreeMap<i64, StateGroupEntry>,
     pub levels: Vec<Level>,
     pub stats: Stats,
+    pub max_group_found: i64,
 }
 
 impl<'a> Compressor<'a> {
@@ -123,12 +125,36 @@ impl<'a> Compressor<'a> {
     pub fn compress(
         original_state_map: &'a BTreeMap<i64, StateGroupEntry>,
         level_sizes: &[usize],
+        // just needed for saving and continuing
+        max_group_found: i64,
     ) -> Compressor<'a> {
         let mut compressor = Compressor {
             original_state_map,
             new_state_group_map: BTreeMap::new(),
             levels: level_sizes.iter().map(|size| Level::new(*size)).collect(),
             stats: Stats::default(),
+            max_group_found,
+        };
+
+        compressor.create_new_tree();
+
+        compressor
+    }
+
+    // used when restoring state from a file
+    // in which case the levels are already populated and so don't need to make them
+    // otherwise exactly the same as new()
+    pub fn keep_compressing(
+        original_state_map: &'a BTreeMap<i64, StateGroupEntry>,
+        levels: Vec<Level>,
+        max_group_found: i64,
+    ) -> Compressor<'a> {
+        let mut compressor = Compressor {
+            original_state_map,
+            new_state_group_map: BTreeMap::new(),
+            levels,
+            stats: Stats::default(),
+            max_group_found,
         };
 
         compressor.create_new_tree();
@@ -275,7 +301,7 @@ fn test_new_map() {
         prev = Some(i)
     }
 
-    let compressor = Compressor::compress(&initial, &[3, 3]);
+    let compressor = Compressor::compress(&initial, &[3, 3], 13);
 
     let new_state = compressor.new_state_group_map;
 

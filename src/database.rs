@@ -36,6 +36,8 @@ use super::StateGroupEntry;
 /// - Fetches the first [group] rows with group id after [min]
 /// - Recursively searches for missing predecessors and adds those
 ///
+/// Returns with the state_group map and the id of the last group that was used
+///
 /// # Arguments
 ///
 /// * `room_id`             -   The ID of the room in the database
@@ -45,13 +47,18 @@ use super::StateGroupEntry;
 ///                             groups greater than (but not equal) to this number. It
 ///                             also requires groups_to_compress to be specified
 /// * 'groups_to_compress'  -   The number of groups to get from the database before stopping
+/// * 'levels'              -   Contains the saved level info from previous running of
+///                             the compressor in this room. We need to ensure we get the
+///                             the information for each of the state_groups at the head of
+///                             each level (so that we can work out deltas)
 
 pub fn get_data_from_db(
     db_url: &str,
     room_id: &str,
     min_state_group: Option<i64>,
     groups_to_compress: Option<i64>,
-) -> BTreeMap<i64, StateGroupEntry> {
+    levels: &Option<Vec<Level>>,
+) -> (BTreeMap<i64, StateGroupEntry>, i64) {
     // connect to the database
     let mut builder = SslConnector::builder(SslMethod::tls()).unwrap();
     builder.set_verify(SslVerifyMode::NONE);
@@ -66,6 +73,19 @@ pub fn get_data_from_db(
 
     let mut state_group_map =
         get_initial_data_from_db(&mut client, room_id, min_state_group, max_group_found);
+
+    // if have restored from save - then also need to load the states at the heads of each level
+    // so that we can work out the deltas
+    if let Some(ls) = levels {
+        let head_maps = load_level_heads(&mut client, &ls);
+        // Go through all of them as don't want to overwrite existing entries (and accidently
+        // get the in_range field wrong!)
+        for (k, v) in head_maps.into_iter() {
+            if !state_group_map.contains_key(&k) {
+                state_group_map.insert(k, v);
+            }
+        }
+    }
 
     println!("Got initial state from database. Checking for any missing state groups...");
 
@@ -114,7 +134,7 @@ pub fn get_data_from_db(
         }
     }
 
-    state_group_map
+    (state_group_map, max_group_found)
 }
 /// Returns the group ID of the last group to be compressed
 ///
@@ -294,14 +314,86 @@ fn get_missing_from_db(
     state_group_map
 }
 
+/// Finds the state_groups that are at the head of each compressor level
+///
+/// # Arguments
+///
+/// * `client'  -   A Postgres client to make requests with
+/// * `levels'  -   The levels who's heads are being requested
+fn load_level_heads(client: &mut Client, levels: &Vec<Level>) -> BTreeMap<i64, StateGroupEntry> {
+    // obtain all of the heads that aren't None from levels
+    let level_heads: Vec<i64> = levels
+        .iter()
+        .map(|l| {
+            if let Some(c) = l.current {
+                return c;
+            }
+            -1
+        })
+        .filter(|c| *c > 0)
+        .collect();
+
+    // Query to get id, predecessor and deltas for each state group
+    let sql = r#"
+        SELECT m.id, prev_state_group, type, state_key, s.event_id
+        FROM state_groups AS m
+        LEFT JOIN state_groups_state AS s ON (m.id = s.state_group)
+        LEFT JOIN state_group_edges AS e ON (m.id = e.state_group)
+        WHERE m.id = ANY($1)
+    "#;
+
+    // Actually do the query
+    let mut rows = client.query_raw(sql, &[&level_heads]).unwrap();
+
+    // Copy the data from the database into a map
+    let mut state_group_map: BTreeMap<i64, StateGroupEntry> = BTreeMap::new();
+
+    while let Some(row) = rows.next().unwrap() {
+        // The row in the map to copy the data to
+        let entry = state_group_map.entry(row.get(0)).or_default();
+
+        // Save the predecessor (this may already be there)
+        entry.prev_state_group = row.get(1);
+
+        // Copy the single delta from the predecessor stored in this row
+        if let Some(etype) = row.get::<_, Option<String>>(2) {
+            entry.state_map.insert(
+                &etype,
+                &row.get::<_, String>(3),
+                row.get::<_, String>(4).into(),
+            );
+        }
+    }
+    state_group_map
+}
+
+/// Stores the current state of the compressor so it can be continued later
+///
+/// File output format is:
+/// ``` ignore
+/// last_group_that_was_compressed
+/// maximum_length;current_length;current_head
+/// maximum_length;current_length;current_head
+/// maximum_length;current_length;current_head
+/// etc.
+/// ```
+/// The levels are stored in the order L1,L2,L3,....
+/// If a level currently has no head then -1 is stored as current_head
 pub fn store_compressor_state(comp: &Compressor) {
+    // open the file
     let mut save_file = File::create("compressor_state.csv").unwrap();
 
+    // store where to continue from
+    writeln!(save_file, "{}", comp.max_group_found).unwrap();
+
     for level in comp.levels.iter() {
+        // work out what to store as current_head
         let mut current_head = -1;
         if let Some(g) = level.current {
             current_head = g;
         }
+
+        // actually write it out to the file
         writeln!(
             save_file,
             // max;len;curr
@@ -314,25 +406,57 @@ pub fn store_compressor_state(comp: &Compressor) {
     }
 }
 
-pub fn load_compressor_state() -> Vec<Level> {
-    let save_file = File::open("compressor_state.csv").unwrap();
+/// Stores the current state of the compressor so it can be continued later
+///
+/// Returns None if there was an issue accessing the file
+/// panics if there is some other error
+///
+/// Assumes that file format is:
+/// ``` ignore
+/// last_group_that_was_compressed
+/// maximum_length;current_length;current_head
+/// maximum_length;current_length;current_head
+/// maximum_length;current_length;current_head
+/// etc.
+/// ```
+/// The levels are stored in the order L1,L2,L3,....
+/// If a level currently has no head then -1 is stored as current_head
+pub fn load_compressor_state() -> Option<(Vec<Level>, i64)> {
+    // open the file we want to load from
+    let save_file = File::open("compressor_state.csv");
+    if save_file.is_err() {
+        // If there was some error opening the file then return None
+        return None;
+    }
+    let save_file = save_file.unwrap();
+
     let mut levels = Vec::new();
-    for level_save in BufReader::new(save_file).lines() {
+    let mut lines = BufReader::new(save_file).lines();
+
+    // the first line stores the group to continue from
+    let new_min: i64 = lines.next().unwrap().unwrap().parse().unwrap();
+
+    // The other lines store level info
+    for level_save in lines {
         let level_save = level_save.unwrap();
+        // split the line into the individual fields
         let mut line = level_save.split(';');
 
+        // read out each of the three fields for each line
         let max: usize = line.next().unwrap().parse().unwrap();
         let len: usize = line.next().unwrap().parse().unwrap();
         let curr: i64 = line.next().unwrap().parse().unwrap();
 
+        // detect if there is NO current head for that level
         let mut curr = Some(curr);
         if let Some(-1) = curr {
             curr = None
         }
-        
+
+        // create the level struct and store in in the vector 'levels'
         levels.push(Level::restore(max, len, curr));
     }
-    levels
+    Some((levels, new_min))
 }
 
 /// Helper function that escapes the wrapped text when writing SQL
