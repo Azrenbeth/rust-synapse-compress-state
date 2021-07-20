@@ -68,6 +68,7 @@ impl FromStr for LevelSizes {
 }
 
 /// Contains configuration information for this run of the compressor
+#[allow(clippy::too_many_arguments)]
 pub struct Config {
     // the url for the postgres database
     // this should be of the form postgres://user:pass@domain/database

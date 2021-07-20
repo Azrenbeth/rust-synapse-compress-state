@@ -58,3 +58,4 @@ fn run_succeeds_without_crashing() {
 
     run(config);
 }
+
