@@ -42,6 +42,7 @@ dependencies = [
  "postgres-openssl",
  "rand",
  "serial_test",
+ "synapse_compress_state",
 ]
 
 [[package]]
