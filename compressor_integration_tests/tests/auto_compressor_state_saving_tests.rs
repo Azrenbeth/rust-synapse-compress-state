@@ -5,7 +5,7 @@ use auto_compressor::{
     },
     LevelState,
 };
-use compressor_integration_tests::{DB_URL, empty_database};
+use compressor_integration_tests::{DB_URL, clear_compressor_state};
 use serial_test::serial;
 
 
@@ -14,7 +14,7 @@ use serial_test::serial;
 fn write_then_read_state_gives_correct_results() {
     let mut client = connect_to_database(DB_URL).unwrap();
     create_tables_if_needed(&mut client).unwrap();
-    empty_database();
+    clear_compressor_state();
 
     let room_id = "room1";
     let written_info: Vec<LevelState> = vec![(3, 1, Some(6)), (3, 2, Some(6))];
