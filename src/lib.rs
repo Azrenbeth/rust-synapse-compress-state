@@ -279,7 +279,8 @@ pub fn run(mut config: Config) {
         &config.room_id,
         config.min_state_group,
         config.groups_to_compress,
-    );
+    ).unwrap_or_else(|| panic!("No state groups found within this range"));
+
     println!("Fetched state groups up to {}", max_group_found);
 
     println!("Number of state groups: {}", state_group_map.len());
@@ -477,16 +478,18 @@ pub struct ChunkStats {
     pub commited: bool,
 }
 
+/// Loads a compressor state, runs it on a room and then returns info on how it got on
 pub fn continue_run(
     start: Option<i64>,
     chunk_size: i64,
     db_url: &str,
     room_id: &str,
     level_info: &[(usize, usize, Option<i64>)],
-) -> ChunkStats {
+) -> Option<ChunkStats> {
     // First we need to get the current state groups
-    let (state_group_map, max_group_found) =
-        database::reload_data_from_db(&db_url, &room_id, start, Some(chunk_size), level_info);
+    // If nothing was found then return None
+    let (state_group_map, max_group_found) = 
+        database::reload_data_from_db(&db_url, &room_id, start, Some(chunk_size), level_info)?;
 
     let original_num_rows = state_group_map
         .iter()
@@ -525,26 +528,26 @@ pub fn continue_run(
 
     if ratio > 1.0 {
         println!("This compression would not remove any rows. Aborting.");
-        return ChunkStats {
+        return Some(ChunkStats {
             new_level_info: compressor.get_level_info(),
             last_compressed_group: max_group_found,
             original_num_rows,
             new_num_rows,
             commited: false,
-        };
+        });
     }
 
     check_that_maps_match(&state_group_map, &new_state_group_map);
 
     database::send_changes_to_db(&db_url, &room_id, &state_group_map, &new_state_group_map);
 
-    ChunkStats {
+    Some(ChunkStats {
         new_level_info: compressor.get_level_info(),
         last_compressed_group: max_group_found,
         original_num_rows,
         new_num_rows,
         commited: true,
-    }
+    })
 }
 
 /// Compares two sets of state groups

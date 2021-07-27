@@ -25,6 +25,7 @@ use super::StateGroupEntry;
 /// specific room.
 ///
 /// Returns with the state_group map and the id of the last group that was used
+/// Or None if there are no state groups within the range given
 ///
 /// # Arguments
 ///
@@ -41,7 +42,7 @@ pub fn get_data_from_db(
     room_id: &str,
     min_state_group: Option<i64>,
     groups_to_compress: Option<i64>,
-) -> (BTreeMap<i64, StateGroupEntry>, i64) {
+) -> Option<(BTreeMap<i64, StateGroupEntry>, i64)> {
     // connect to the database
     let mut builder = SslConnector::builder(SslMethod::tls()).unwrap();
     builder.set_verify(SslVerifyMode::NONE);
@@ -51,13 +52,19 @@ pub fn get_data_from_db(
 
     let state_group_map: BTreeMap<i64, StateGroupEntry> = BTreeMap::new();
 
-    load_map_from_db(
+    // Search for the group id of the groups_to_compress'th group after min_state_group
+    // If this is saved, then the compressor can continue by having min_state_group being
+    // set to this maximum. Max_group_found is NONE if there are no groups to compress
+    // in this range.
+    let max_group_found = find_max_group(&mut client, room_id, min_state_group, groups_to_compress)?;
+
+    Some(load_map_from_db(
         &mut client,
         room_id,
         min_state_group,
-        groups_to_compress,
+        max_group_found,
         state_group_map,
-    )
+    ))
 }
 
 /// Fetch the entries in state_groups_state (and their prev groups) for a
@@ -66,6 +73,7 @@ pub fn get_data_from_db(
 /// of each of the levels (as they were at the end of the last run of the compressor)
 ///
 /// Returns with the state_group map and the id of the last group that was used
+/// Or None if there are no state groups within the range given
 ///
 /// # Arguments
 ///
@@ -86,7 +94,7 @@ pub fn reload_data_from_db(
     min_state_group: Option<i64>,
     groups_to_compress: Option<i64>,
     level_info: &[(usize, usize, Option<i64>)],
-) -> (BTreeMap<i64, StateGroupEntry>, i64) {
+) -> Option<(BTreeMap<i64, StateGroupEntry>, i64)> {
     // connect to the database
     let mut builder = SslConnector::builder(SslMethod::tls()).unwrap();
     builder.set_verify(SslVerifyMode::NONE);
@@ -94,18 +102,24 @@ pub fn reload_data_from_db(
 
     let mut client = Client::connect(db_url, connector).unwrap();
 
+    // Search for the group id of the groups_to_compress'th group after min_state_group
+    // If this is saved, then the compressor can continue by having min_state_group being
+    // set to this maximum. Max_group_found is NONE if there are no groups to compress
+    // in this range.
+    let max_group_found = find_max_group(&mut client, room_id, min_state_group, groups_to_compress)?;
+
     // load just the state_groups at the head of each level
     // this doesn't load their predecessors as that will be done at the end of
     // load_map_from_db()
     let state_group_map: BTreeMap<i64, StateGroupEntry> = load_level_heads(&mut client, level_info);
 
-    load_map_from_db(
+    Some(load_map_from_db(
         &mut client,
         room_id,
         min_state_group,
-        groups_to_compress,
+        max_group_found,
         state_group_map,
-    )
+    ))
 }
 
 /// Finds the state_groups that are at the head of each compressor level
@@ -184,21 +198,17 @@ fn load_level_heads(
 /// * `min_state_group`     -   If specified, then only fetch the entries for state
 ///                             groups greater than (but not equal) to this number. It
 ///                             also requires groups_to_compress to be specified
-/// * 'groups_to_compress'  -   The number of groups to get from the database before stopping
+/// * 'max_group_found'     -   The last group to get from the database before stopping
 /// * 'state_group_map'     -   The map to populate with the entries from the database
 
 fn load_map_from_db(
     client: &mut Client,
     room_id: &str,
     min_state_group: Option<i64>,
-    groups_to_compress: Option<i64>,
+    max_group_found: i64,
     mut state_group_map: BTreeMap<i64, StateGroupEntry>,
 ) -> (BTreeMap<i64, StateGroupEntry>, i64) {
-    // Search for the group id of the groups_to_compress'th group after min_state_group
-    // If this is saved, then the compressor can continue by having min_state_group being
-    // set to this maximum
-    let max_group_found = find_max_group(client, room_id, min_state_group, groups_to_compress);
-
+    
     state_group_map.append(&mut get_initial_data_from_db(
         client,
         room_id,
@@ -271,8 +281,7 @@ fn find_max_group(
     room_id: &str,
     min_state_group: Option<i64>,
     groups_to_compress: Option<i64>,
-) -> i64 {
-    // Get list of state_id's in a certain room
+) -> Option<i64> {
     let sql = r#"
         SELECT m.id
         FROM state_groups AS m
@@ -294,7 +303,7 @@ fn find_max_group(
     .unwrap();
 
     let final_row = rows.last().unwrap().unwrap();
-    final_row.get(0)
+    Some(final_row.get::<_,i64>(0))
 }
 
 /// Fetch the entries in state_groups_state and immediate predecessors for

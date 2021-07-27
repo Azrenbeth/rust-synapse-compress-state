@@ -26,7 +26,14 @@ pub fn run_compressor_on_room_chunk(
     };
 
     // run the compressor on this chunk
-    let chunk_stats = continue_run(start, chunk_size, db_url, room_id, &level_info);
+    let option_chunk_stats = continue_run(start, chunk_size, db_url, room_id, &level_info);
+
+    if option_chunk_stats.is_none() {
+        return;
+    }
+
+    let chunk_stats = option_chunk_stats.unwrap();
+
     println!("{:?}", chunk_stats);
 
     // Check to see whether the compressor sent its changes to the database
