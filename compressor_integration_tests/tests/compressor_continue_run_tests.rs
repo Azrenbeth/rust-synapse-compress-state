@@ -35,7 +35,7 @@ fn continue_run_called_twice_same_as_run() {
     let chunk_size = 7;
 
     // compress in 3,3 level sizes
-    // since the compressor hasn't been run before they are emtpy
+    // since the compressor hasn't been run before they are empty
     let level_info = vec![(3, 0, None), (3, 0, None)];
 
     // Run the compressor with those settings
@@ -43,7 +43,7 @@ fn continue_run_called_twice_same_as_run() {
 
     // Assert that it stopped at 6 (i.e. after the 7 groups 0...6)
     assert_eq!(chunk_stats_1.last_compressed_group, 6);
-    // structure should be the following at this poing
+    // structure should be the following at this point
     // (NOTE: only including compressed groups)
     //
     // 0  3\
