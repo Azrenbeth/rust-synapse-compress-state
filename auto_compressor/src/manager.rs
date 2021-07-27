@@ -5,12 +5,15 @@ use crate::{
 use synapse_compress_state::continue_run;
 
 /// Runs the compressor on a chunk of the room
+///
+/// Returns true if the compressor has progressed
+/// And false if it had already got to the end of the room
 pub fn run_compressor_on_room_chunk(
     db_url: &str,
     room_id: &str,
     chunk_size: i64,
     default_levels: &[LevelState],
-) {
+) -> bool {
     // connect to the database
     let mut client = connect_to_database(db_url)
         .unwrap_or_else(|_| panic!("Error while connecting to {}", db_url));
@@ -29,7 +32,7 @@ pub fn run_compressor_on_room_chunk(
     let option_chunk_stats = continue_run(start, chunk_size, db_url, room_id, &level_info);
 
     if option_chunk_stats.is_none() {
-        return;
+        return false;
     }
 
     let chunk_stats = option_chunk_stats.unwrap();
@@ -57,7 +60,7 @@ pub fn run_compressor_on_room_chunk(
             )
         });
 
-        return;
+        return true;
     }
 
     // Save where we got up to after this successful commit
@@ -73,4 +76,29 @@ pub fn run_compressor_on_room_chunk(
             room_id, start, chunk_stats.last_compressed_group,
         )
     });
+
+    true
+}
+
+/// Compresses a chunk of the 1st room in rooms_to_compress
+///
+/// If the 1st room has no more groups to compress then it
+/// removes that room from the rooms_to_compress vector
+fn compress_chunk_of_largest_room(
+    db_url: &str,
+    chunk_size: i64,
+    default_levels: &[LevelState],
+    rooms_to_compress: &mut Vec<(String, i64)>,
+) {
+    if rooms_to_compress.is_empty() {
+        panic!("Called compress_chunk_of_largest_room with empty rooms_to_compress argument");
+    }
+
+    let (room_id, _) = rooms_to_compress.get(0).unwrap().clone();
+
+    let did_work = run_compressor_on_room_chunk(db_url, &room_id, chunk_size, default_levels);
+
+    if !did_work {
+        rooms_to_compress.remove(0);
+    }
 }
