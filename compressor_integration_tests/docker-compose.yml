@@ -13,4 +13,4 @@ services:
       POSTGRES_DB: synapse
 
     volumes:
-      - ./compressor_integration_tests/database_setup.sh:/docker-entrypoint-initdb.d/1_database_setup.sh 
+      - ./database_setup.sh:/docker-entrypoint-initdb.d/1_database_setup.sh 
