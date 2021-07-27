@@ -30,8 +30,7 @@ fn continue_run_called_twice_same_as_run() {
     let room_id = "room1".to_string();
 
     // will run the compression in two batches
-    // 1st group id here is 0 so set start to -1
-    let start = -1;
+    let start = None;
     let chunk_size = 7;
 
     // compress in 3,3 level sizes
@@ -54,7 +53,7 @@ fn continue_run_called_twice_same_as_run() {
         vec![(3, 1, Some(6)), (3, 2, Some(6))]
     );
 
-    let start = 6;
+    let start = Some(6);
     let chunk_size = 7;
     let level_info = chunk_stats_1.new_level_info.clone();
 

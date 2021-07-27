@@ -20,15 +20,20 @@ pub fn run_compressor_on_room_chunk(
         .unwrap_or_else(|_| panic!("Unable to read compressor state for room {}", room_id));
 
     // If the database didn't contain any information, then use the default state
-    let (start, level_info) = retrieved_state.unwrap_or((0, default_levels.to_vec()));
+    let (start, level_info) = match retrieved_state {
+        Some((s,l)) => (Some(s),l),
+        None => (None,default_levels.to_vec()),
+    };
 
     // run the compressor on this chunk
     let chunk_stats = continue_run(start, chunk_size, db_url, room_id, &level_info);
+    println!("{:?}", chunk_stats);
+
 
     // Check to see whether the compressor sent its changes to the database
     if !chunk_stats.commited {
         println!(
-            "The compressor tried to increase the number of rows in {} between {} and {}. Skipping...",
+            "The compressor tried to increase the number of rows in {} between {:?} and {}. Skipping...",
             room_id, start, chunk_stats.last_compressed_group,
         );
 
@@ -41,7 +46,7 @@ pub fn run_compressor_on_room_chunk(
         )
         .unwrap_or_else(|_| {
             panic!(
-                "Error when skipping chunk in room {} between {} and {}",
+                "Error when skipping chunk in room {} between {:?} and {}",
                 room_id, start, chunk_stats.last_compressed_group,
             )
         });
@@ -58,7 +63,7 @@ pub fn run_compressor_on_room_chunk(
     )
     .unwrap_or_else(|_| {
         panic!(
-            "Error when saving state after compressing chunk in room {} between {} and {}",
+            "Error when saving state after compressing chunk in room {} between {:?} and {}",
             room_id, start, chunk_stats.last_compressed_group,
         )
     });

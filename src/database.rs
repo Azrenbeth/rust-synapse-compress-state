@@ -279,13 +279,17 @@ fn find_max_group(
         WHERE m.room_id = $1
     "#;
 
-    // Adds additional constraint if a groups_to_compress has been specified
+    // Adds additional constraint if a groups_to_compress or min_state_group have been specified
     // Then sends query to the datatbase
     let rows = if let (Some(min), Some(count)) = (min_state_group, groups_to_compress) {
         let params: Vec<&dyn ToSql> = vec![&room_id, &min, &count];
         client.query_raw(format!(r"{} AND m.id > $2 LIMIT $3", sql).as_str(), params)
+    } else if let Some(count) = groups_to_compress {
+        let params: Vec<&dyn ToSql> = vec![&room_id, &count];
+        client.query_raw(format!(r"{} LIMIT $2", sql).as_str(), params)
     } else {
         client.query_raw(sql, &[room_id])
+
     }
     .unwrap();
 
@@ -325,8 +329,6 @@ fn get_initial_data_from_db(
     "#;
 
     // Adds additional constraint if minimum state_group has been specified.
-    // note that the maximum group only affects queries if there is also a minimum
-    // otherwise it is assumed that ALL groups should be fetched
     let mut rows = if let Some(min) = min_state_group {
         let params: Vec<&dyn ToSql> = vec![&room_id, &min, &max_group_found];
         client.query_raw(
@@ -334,7 +336,11 @@ fn get_initial_data_from_db(
             params,
         )
     } else {
-        client.query_raw(sql, &[room_id])
+        let params: Vec<&dyn ToSql> = vec![&room_id, &max_group_found];
+        client.query_raw(
+            format!(r"{} AND m.id <= $2", sql).as_str(),
+            params,
+        )
     }
     .unwrap();
 

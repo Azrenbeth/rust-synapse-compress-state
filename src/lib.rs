@@ -462,6 +462,7 @@ fn output_sql(
 }
 
 /// Information about what compressor did to chunk that it was ran on
+#[derive(Debug)]
 pub struct ChunkStats {
     // The state of each of the levels of the compressor when it stopped
     pub new_level_info: Vec<(usize, usize, Option<i64>)>,
@@ -477,7 +478,7 @@ pub struct ChunkStats {
 }
 
 pub fn continue_run(
-    start: i64,
+    start: Option<i64>,
     chunk_size: i64,
     db_url: &str,
     room_id: &str,
@@ -485,7 +486,7 @@ pub fn continue_run(
 ) -> ChunkStats {
     // First we need to get the current state groups
     let (state_group_map, max_group_found) =
-        database::reload_data_from_db(&db_url, &room_id, Some(start), Some(chunk_size), level_info);
+        database::reload_data_from_db(&db_url, &room_id, start, Some(chunk_size), level_info);
 
     let original_num_rows = state_group_map
         .iter()

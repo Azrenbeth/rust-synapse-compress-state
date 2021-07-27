@@ -5,9 +5,8 @@ use auto_compressor::{
     },
     LevelState,
 };
-use compressor_integration_tests::{DB_URL, clear_compressor_state};
+use compressor_integration_tests::{clear_compressor_state, DB_URL};
 use serial_test::serial;
-
 
 #[test]
 #[serial(db)]

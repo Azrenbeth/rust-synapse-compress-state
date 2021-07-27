@@ -26,7 +26,7 @@ pub fn create_tables_if_needed(client: &mut Client) -> Result<u64, Error> {
             level_num INT NOT NULL,
             max_size INT NOT NULL,
             current_length INT NOT NULL,
-            current_head BIGINT NOT NULL
+            current_head BIGINT
         )"#;
 
     client.execute(create_state_table, &[])?;
@@ -73,17 +73,8 @@ pub fn read_room_compressor_state(
         let level_num: usize = l.get::<_, i32>(0) as usize;
         let max_size: usize = l.get::<_, i32>(1) as usize;
         let current_length: usize = l.get::<_, i32>(2) as usize;
+        let current_head: Option<i64> = l.get::<_, Option<i64>>(3);
         last_compressed = l.get::<_, i64>(4); // possibly rewrite same value
-
-        // Note that the database stores an int but we want an Option.
-        // Since no state_group 0 is created by synapse we use 0 to
-        // represent None. Even if ther is a group 0, we only
-        // compresss groups with ID above 0 (so worst case is that
-        // group 0 is not compressed which is fine)
-        let current_head: Option<i64> = match l.get::<_, i64>(3) {
-            0 => None,
-            n => Some(n),
-        };
 
         // Check that there aren't multiple entries for the same level number
         // in the database.
@@ -161,12 +152,12 @@ pub fn write_room_compressor_state(
         // bring the level info out of the tuple
         let (max_size, current_len, current_head) = level;
 
-        // Note that the database stores an int but current_head is an Option.
-        // Since no state_group 0 is created by synapse we use 0 to
-        // represent None. Even if there is a group 0, we only
-        // compresss groups with ID above 0 (so worst case is that
-        // group 0 is not compressed which is fine)
-        let current_head = current_head.unwrap_or(0);
+        // Current_head is either a value or NULL
+        // need to convert from Option so that this can be placed into a string
+        let current_head = match current_head {
+            Some(s) => s.to_string(),
+            None => "NULL".to_string(),
+        };
 
         // Add the new informaton for this level into the database
         sql.push_str(&format!(
