@@ -21,14 +21,13 @@ pub fn run_compressor_on_room_chunk(
 
     // If the database didn't contain any information, then use the default state
     let (start, level_info) = match retrieved_state {
-        Some((s,l)) => (Some(s),l),
-        None => (None,default_levels.to_vec()),
+        Some((s, l)) => (Some(s), l),
+        None => (None, default_levels.to_vec()),
     };
 
     // run the compressor on this chunk
     let chunk_stats = continue_run(start, chunk_size, db_url, room_id, &level_info);
     println!("{:?}", chunk_stats);
-
 
     // Check to see whether the compressor sent its changes to the database
     if !chunk_stats.commited {
