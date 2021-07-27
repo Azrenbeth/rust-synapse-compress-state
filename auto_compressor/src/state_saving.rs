@@ -215,3 +215,33 @@ impl<'a> fmt::Display for PGEscape<'a> {
         write!(f, "{}{}{}", delim, self.0, delim)
     }
 }
+
+pub fn get_rooms_with_most_rows_to_compress(
+    client: &mut Client,
+    number: i32,
+) -> Result<Option<Vec<(String, i64)>>, Error> {
+    let get_biggest_rooms = r#"
+        SELECT s.room_id, count(*) AS num_rows
+        FROM state_groups_state AS s
+        LEFT JOIN state_compressor_progress AS p 
+            ON s.room_id = p.room_id
+        WHERE s.state_group > p.last_compressed 
+            OR p.last_compressed IS NULL
+        GROUP BY s.room_id
+        ORDER BY num_rows
+        LIMIT $1
+    )"#;
+
+    let rooms = client.query(get_biggest_rooms, &[&number])?;
+
+    if rooms.is_empty() {
+        return Ok(None);
+    }
+
+    let rows_to_compress = rooms
+        .iter()
+        .map(|r| (r.get::<_, String>(0), r.get::<_, i64>(1)))
+        .collect();
+
+    Ok(Some(rows_to_compress))
+}
