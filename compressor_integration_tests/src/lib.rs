@@ -8,6 +8,8 @@ use string_cache::DefaultAtom as Atom;
 
 use synapse_compress_state::StateGroupEntry;
 
+pub mod map_builder;
+
 pub static DB_URL: &str = "postgresql://synapse_user:synapse_pass@localhost/synapse";
 
 pub fn add_contents_to_database(room_id: &str, state_group_map: &BTreeMap<i64, StateGroupEntry>) {
@@ -188,7 +190,7 @@ fn collapse_state_with_database(state_group: i64) -> StateMap<Atom> {
         };
 
         // if there was a predecessor then assert that it is unique
-        if !next_group.is_none() {
+        if next_group.is_some() {
             assert!(pred.next().unwrap().is_none());
         }
         drop(pred);
@@ -248,7 +250,7 @@ pub fn database_structure_matches_map(state_group_map: &BTreeMap<i64, StateGroup
         };
 
         // if there was a predecessor then assert that it is unique
-        if !database_pred.is_none() {
+        if database_pred.is_some() {
             assert!(pred_iter.next().unwrap().is_none());
         }
 

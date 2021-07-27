@@ -5,3 +5,4 @@
 out.sql
 *.csv
 /tests/tmp/**
+**/*.sql
