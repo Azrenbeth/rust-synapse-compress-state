@@ -1,5 +1,8 @@
 use crate::{
-    state_saving::{connect_to_database, read_room_compressor_state, write_room_compressor_state},
+    state_saving::{
+        connect_to_database, get_rooms_with_most_rows_to_compress, read_room_compressor_state,
+        write_room_compressor_state,
+    },
     LevelState,
 };
 use synapse_compress_state::continue_run;
@@ -100,5 +103,29 @@ fn compress_chunk_of_largest_room(
 
     if !did_work {
         rooms_to_compress.remove(0);
+    }
+}
+
+pub fn compress_largest_rooms(
+    db_url: &str,
+    chunk_size: i64,
+    default_levels: &[LevelState],
+    number: i32,
+) {
+    // connect to the database
+    let mut client = connect_to_database(db_url)
+        .unwrap_or_else(|_| panic!("Error while connecting to {}", db_url));
+
+    let rooms_to_compress = get_rooms_with_most_rows_to_compress(&mut client, number)
+        .unwrap_or_else(|_| panic!("Error while trying to work out what room to compress next"));
+
+    if rooms_to_compress.is_none() {
+        return;
+    }
+
+    let mut rooms_to_compress = rooms_to_compress.unwrap();
+
+    while !rooms_to_compress.is_empty() {
+        compress_chunk_of_largest_room(db_url, chunk_size, default_levels, &mut rooms_to_compress);
     }
 }
