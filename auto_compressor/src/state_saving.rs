@@ -228,7 +228,7 @@ pub fn get_rooms_with_most_rows_to_compress(
         WHERE s.state_group > p.last_compressed 
             OR p.last_compressed IS NULL
         GROUP BY s.room_id
-        ORDER BY num_rows
+        ORDER BY num_rows DESC
         LIMIT $1
     "#;
 

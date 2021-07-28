@@ -136,9 +136,84 @@ fn compress_largest_rooms_compresses_multiple_rooms() {
 
     let expected2 = structure_from_edges_with_state(expected_edges, 14, 27);
 
-    // Check that the database still gives correct states for each group in room1
+    // Check that the database still gives correct states for each group in room2
     assert!(database_collapsed_states_match_map(&initial2));
 
-    // Check that the structure of the database matches the expected structure for room1
+    // Check that the structure of the database matches the expected structure for room2
+    assert!(database_structure_matches_map(&expected2));
+}
+
+#[test]
+#[serial(db)]
+fn compress_largest_rooms_does_largest_rooms() {
+    // This creates 2 with the following structure
+    //
+    // 0-1-2 3-4-5 (room1)
+    // 14-15-16 17-18-19 20-21-22 23-24-25 26-27 (room2)
+    //
+    // Each group i has state:
+    //     ('node','is',      i)
+    //     ('group',  j, 'seen') - for all j less than i in that room
+    
+    // NOTE the second room has more state
+
+    let initial1 = line_segments_with_state(0, 5);
+    let initial2 = line_segments_with_state(14, 27);
+
+    empty_database();
+    add_contents_to_database("room1", &initial1);
+    add_contents_to_database("room2", &initial2);
+
+    let mut client = connect_to_database(DB_URL).unwrap();
+    create_tables_if_needed(&mut client).unwrap();
+    clear_compressor_state();
+
+    // compress in 3,3 level sizes by default
+    let default_levels = vec![(3, 0, None), (3, 0, None)];
+
+    // compress the largest 1 rooms in chunks of size 7
+    // (Note this should ONLY compress room2 since it has more state)
+    compress_largest_rooms(DB_URL, 7, &default_levels, 1);
+
+    // We are aiming for the following structure in the database for room2
+    // i.e. groups 20 and 23 should have changed from initial map
+    //
+    // 14  17\       36
+    // 15  18 20\    27
+    // 16  19 21 23
+    //        22 24
+    //           25
+    //
+    // Where each group i has state:
+    //     ('node','is',      i)
+    //     ('group',  j, 'seen') - for all j less than i in that room
+    let expected_edges: BTreeMap<i64, i64> = vec![
+        (15, 14),
+        (16, 15),
+        (18, 17),
+        (19, 18),
+        (20, 17),
+        (21, 20),
+        (22, 21),
+        (23, 20),
+        (24, 23),
+        (25, 24),
+        (27, 26),
+    ]
+    .into_iter()
+    .collect();
+
+    let expected2 = structure_from_edges_with_state(expected_edges, 14, 27);
+
+    // Check that the database still gives correct states for each group in room1
+    assert!(database_collapsed_states_match_map(&initial1));
+
+    // Check that the structure of the database is still what it was initially
+    assert!(database_structure_matches_map(&initial1));
+
+    // Check that the database still gives correct states for each group in room2
+    assert!(database_collapsed_states_match_map(&initial2));
+
+    // Check that the structure of the database is the expected compressed one
     assert!(database_structure_matches_map(&expected2));
 }
