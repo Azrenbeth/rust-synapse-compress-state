@@ -1,3 +1,5 @@
+// This module contains functions to communicate with the database
+
 use core::fmt;
 use rand::{distributions::Alphanumeric, thread_rng, Rng};
 use std::borrow::Cow;
@@ -8,7 +10,12 @@ use postgres_openssl::MakeTlsConnector;
 
 use crate::LevelState;
 
-// Connects to the database and returns the client to use for the rest of the program
+/// Connects to the database and returns a postgres client 
+///
+/// # Arguments
+///
+/// * `db_url`          -   The URL of the postgres database that synapse is using.
+///                         e.g. "postgresql://user:password@domain.com/synapse"
 pub fn connect_to_database(db_url: &str) -> Result<Client, Error> {
     let mut builder = SslConnector::builder(SslMethod::tls()).unwrap();
     builder.set_verify(SslVerifyMode::NONE);
@@ -17,8 +24,13 @@ pub fn connect_to_database(db_url: &str) -> Result<Client, Error> {
     Client::connect(db_url, connector)
 }
 
-// Creates the state_compressor_state and state_compressor progress tables
-// in the database if they don't already exist
+/// Creates the state_compressor_state and state_compressor progress tables
+///
+/// If these tables already exist then this function does nothing
+///
+/// # Arguments
+///
+/// `client`        - A postgres client used to send the requests to the database
 pub fn create_tables_if_needed(client: &mut Client) -> Result<u64, Error> {
     let create_state_table = r#"
         CREATE TABLE IF NOT EXISTS state_compressor_state (
@@ -40,8 +52,12 @@ pub fn create_tables_if_needed(client: &mut Client) -> Result<u64, Error> {
     client.execute(create_progress_table, &[])
 }
 
-// Retrieve the level info so we can restart the compressor
-// on a given room
+/// Retrieve the level info so we can restart the compressor
+/// 
+/// # Arguments
+///
+/// `client`        - A postgres client used to send the requests to the database
+/// `room_id`       - The room who's saved compressor state we want to load 
 pub fn read_room_compressor_state(
     client: &mut Client,
     room_id: &str,
@@ -125,8 +141,15 @@ pub fn read_room_compressor_state(
     Ok(Some((last_compressed, level_info)))
 }
 
-// Save the level info so it can be loaded by the next run of the compressor
-// on the same room
+/// Save the level info so it can be loaded by the next run of the compressor
+///
+/// # Arguments
+///
+/// `client`            - A postgres client used to send the requests to the database
+/// `room_id`           - The room who's saved compressor state we want to save
+/// `level_info`        - The state that can be used to restore the compressor later
+/// `last_compressed`   - The last state_group that was compressed. This is needed
+///                       so that the compressor knows where to start from next
 pub fn write_room_compressor_state(
     client: &mut Client,
     room_id: &str,
@@ -216,6 +239,17 @@ impl<'a> fmt::Display for PGEscape<'a> {
     }
 }
 
+/// Returns the top [number] rooms with the most uncompressed state
+///
+/// Uncompressed state is measured by number of rows in the state_groups_state
+/// table due to state groups with id's lower than where the compressor has gotten 
+/// up to (i.e. the last_compressed value in the state_compressor_progress
+/// table).
+///
+/// # Arguments
+///
+/// `client`    -   A postgres client used to send the requests to the database
+/// `number`    -   How many groups to return 
 pub fn get_rooms_with_most_rows_to_compress(
     client: &mut Client,
     number: i64,

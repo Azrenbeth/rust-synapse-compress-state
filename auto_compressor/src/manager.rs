@@ -1,6 +1,5 @@
-//! This module contains functions that carry out diffferent types
-//! of compression on the database.
-
+// This module contains functions that carry out diffferent types
+// of compression on the database.
 
 use crate::{
     state_saving::{
