@@ -302,7 +302,7 @@ fn find_max_group(
     }
     .unwrap();
 
-    let final_row = rows.last().unwrap().unwrap();
+    let final_row = rows.last().unwrap()?;
     Some(final_row.get::<_,i64>(0))
 }
 

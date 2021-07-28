@@ -218,7 +218,7 @@ impl<'a> fmt::Display for PGEscape<'a> {
 
 pub fn get_rooms_with_most_rows_to_compress(
     client: &mut Client,
-    number: i32,
+    number: i64,
 ) -> Result<Option<Vec<(String, i64)>>, Error> {
     let get_biggest_rooms = r#"
         SELECT s.room_id, count(*) AS num_rows
@@ -230,7 +230,7 @@ pub fn get_rooms_with_most_rows_to_compress(
         GROUP BY s.room_id
         ORDER BY num_rows
         LIMIT $1
-    )"#;
+    "#;
 
     let rooms = client.query(get_biggest_rooms, &[&number])?;
 

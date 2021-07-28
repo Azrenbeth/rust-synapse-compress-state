@@ -19,11 +19,11 @@ pub fn run_compressor_on_room_chunk(
 ) -> bool {
     // connect to the database
     let mut client = connect_to_database(db_url)
-        .unwrap_or_else(|_| panic!("Error while connecting to {}", db_url));
+        .unwrap_or_else(|e| panic!("Error while connecting to {}: {}", db_url, e));
 
     // Access the database to find out where the compressor last got up to
     let retrieved_state = read_room_compressor_state(&mut client, room_id)
-        .unwrap_or_else(|_| panic!("Unable to read compressor state for room {}", room_id));
+        .unwrap_or_else(|e| panic!("Unable to read compressor state for room {}: {}", room_id,e));
 
     // If the database didn't contain any information, then use the default state
     let (start, level_info) = match retrieved_state {
@@ -56,10 +56,10 @@ pub fn run_compressor_on_room_chunk(
             &default_levels,
             chunk_stats.last_compressed_group,
         )
-        .unwrap_or_else(|_| {
+        .unwrap_or_else(|e| {
             panic!(
-                "Error when skipping chunk in room {} between {:?} and {}",
-                room_id, start, chunk_stats.last_compressed_group,
+                "Error when skipping chunk in room {} between {:?} and {}: {}",
+                room_id, start, chunk_stats.last_compressed_group, e,
             )
         });
 
@@ -73,10 +73,10 @@ pub fn run_compressor_on_room_chunk(
         &chunk_stats.new_level_info,
         chunk_stats.last_compressed_group,
     )
-    .unwrap_or_else(|_| {
+    .unwrap_or_else(|e| {
         panic!(
-            "Error when saving state after compressing chunk in room {} between {:?} and {}",
-            room_id, start, chunk_stats.last_compressed_group,
+            "Error when saving state after compressing chunk in room {} between {:?} and {}: {}",
+            room_id, start, chunk_stats.last_compressed_group, e,
         )
     });
 
@@ -110,14 +110,14 @@ pub fn compress_largest_rooms(
     db_url: &str,
     chunk_size: i64,
     default_levels: &[LevelState],
-    number: i32,
+    number: i64,
 ) {
     // connect to the database
     let mut client = connect_to_database(db_url)
-        .unwrap_or_else(|_| panic!("Error while connecting to {}", db_url));
+        .unwrap_or_else(|e| panic!("Error while connecting to {}: {}", db_url, e));
 
     let rooms_to_compress = get_rooms_with_most_rows_to_compress(&mut client, number)
-        .unwrap_or_else(|_| panic!("Error while trying to work out what room to compress next"));
+        .unwrap_or_else(|e| panic!("Error while trying to work out what room to compress next: {}",e));
 
     if rooms_to_compress.is_none() {
         return;
