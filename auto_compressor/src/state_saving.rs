@@ -30,7 +30,7 @@ pub fn connect_to_database(db_url: &str) -> Result<Client, Error> {
 ///
 /// # Arguments
 ///
-/// `client`        - A postgres client used to send the requests to the database
+/// * `client`        - A postgres client used to send the requests to the database
 pub fn create_tables_if_needed(client: &mut Client) -> Result<u64, Error> {
     let create_state_table = r#"
         CREATE TABLE IF NOT EXISTS state_compressor_state (
@@ -56,8 +56,8 @@ pub fn create_tables_if_needed(client: &mut Client) -> Result<u64, Error> {
 ///
 /// # Arguments
 ///
-/// `client`        - A postgres client used to send the requests to the database
-/// `room_id`       - The room who's saved compressor state we want to load
+/// * `client`        - A postgres client used to send the requests to the database
+/// * `room_id`       - The room who's saved compressor state we want to load
 pub fn read_room_compressor_state(
     client: &mut Client,
     room_id: &str,
@@ -145,10 +145,10 @@ pub fn read_room_compressor_state(
 ///
 /// # Arguments
 ///
-/// `client`            - A postgres client used to send the requests to the database
-/// `room_id`           - The room who's saved compressor state we want to save
-/// `level_info`        - The state that can be used to restore the compressor later
-/// `last_compressed`   - The last state_group that was compressed. This is needed
+/// * `client`            - A postgres client used to send the requests to the database
+/// * `room_id`           - The room who's saved compressor state we want to save
+/// * `level_info`        - The state that can be used to restore the compressor later
+/// * `last_compressed`   - The last state_group that was compressed. This is needed
 ///                       so that the compressor knows where to start from next
 pub fn write_room_compressor_state(
     client: &mut Client,
@@ -248,8 +248,8 @@ impl<'a> fmt::Display for PGEscape<'a> {
 ///
 /// # Arguments
 ///
-/// `client`    -   A postgres client used to send the requests to the database
-/// `number`    -   How many groups to return
+/// * `client`    -   A postgres client used to send the requests to the database
+/// * `number`    -   How many groups to return
 pub fn get_rooms_with_most_rows_to_compress(
     client: &mut Client,
     number: i64,
