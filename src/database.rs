@@ -56,7 +56,8 @@ pub fn get_data_from_db(
     // If this is saved, then the compressor can continue by having min_state_group being
     // set to this maximum. Max_group_found is NONE if there are no groups to compress
     // in this range.
-    let max_group_found = find_max_group(&mut client, room_id, min_state_group, groups_to_compress)?;
+    let max_group_found =
+        find_max_group(&mut client, room_id, min_state_group, groups_to_compress)?;
 
     Some(load_map_from_db(
         &mut client,
@@ -106,7 +107,8 @@ pub fn reload_data_from_db(
     // If this is saved, then the compressor can continue by having min_state_group being
     // set to this maximum. Max_group_found is NONE if there are no groups to compress
     // in this range.
-    let max_group_found = find_max_group(&mut client, room_id, min_state_group, groups_to_compress)?;
+    let max_group_found =
+        find_max_group(&mut client, room_id, min_state_group, groups_to_compress)?;
 
     // load just the state_groups at the head of each level
     // this doesn't load their predecessors as that will be done at the end of
@@ -208,7 +210,6 @@ fn load_map_from_db(
     max_group_found: i64,
     mut state_group_map: BTreeMap<i64, StateGroupEntry>,
 ) -> (BTreeMap<i64, StateGroupEntry>, i64) {
-    
     state_group_map.append(&mut get_initial_data_from_db(
         client,
         room_id,
@@ -298,12 +299,11 @@ fn find_max_group(
         client.query_raw(format!(r"{} LIMIT $2", sql).as_str(), params)
     } else {
         client.query_raw(sql, &[room_id])
-
     }
     .unwrap();
 
     let final_row = rows.last().unwrap()?;
-    Some(final_row.get::<_,i64>(0))
+    Some(final_row.get::<_, i64>(0))
 }
 
 /// Fetch the entries in state_groups_state and immediate predecessors for
@@ -346,10 +346,7 @@ fn get_initial_data_from_db(
         )
     } else {
         let params: Vec<&dyn ToSql> = vec![&room_id, &max_group_found];
-        client.query_raw(
-            format!(r"{} AND m.id <= $2", sql).as_str(),
-            params,
-        )
+        client.query_raw(format!(r"{} AND m.id <= $2", sql).as_str(), params)
     }
     .unwrap();
 

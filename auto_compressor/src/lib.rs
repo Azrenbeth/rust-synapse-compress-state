@@ -1,4 +1,4 @@
-//! This is a tool that uses the synapse_compress_state library to 
+//! This is a tool that uses the synapse_compress_state library to
 //! reduce the size of the synapse state_groups_state table.
 //!
 //! It adds the tables state_compressor_state and state_compressor_progress

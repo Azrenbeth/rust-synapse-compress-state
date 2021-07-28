@@ -279,7 +279,8 @@ pub fn run(mut config: Config) {
         &config.room_id,
         config.min_state_group,
         config.groups_to_compress,
-    ).unwrap_or_else(|| panic!("No state groups found within this range"));
+    )
+    .unwrap_or_else(|| panic!("No state groups found within this range"));
 
     println!("Fetched state groups up to {}", max_group_found);
 
@@ -488,7 +489,7 @@ pub fn continue_run(
 ) -> Option<ChunkStats> {
     // First we need to get the current state groups
     // If nothing was found then return None
-    let (state_group_map, max_group_found) = 
+    let (state_group_map, max_group_found) =
         database::reload_data_from_db(&db_url, &room_id, start, Some(chunk_size), level_info)?;
 
     let original_num_rows = state_group_map

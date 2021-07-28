@@ -10,7 +10,7 @@ use postgres_openssl::MakeTlsConnector;
 
 use crate::LevelState;
 
-/// Connects to the database and returns a postgres client 
+/// Connects to the database and returns a postgres client
 ///
 /// # Arguments
 ///
@@ -53,11 +53,11 @@ pub fn create_tables_if_needed(client: &mut Client) -> Result<u64, Error> {
 }
 
 /// Retrieve the level info so we can restart the compressor
-/// 
+///
 /// # Arguments
 ///
 /// `client`        - A postgres client used to send the requests to the database
-/// `room_id`       - The room who's saved compressor state we want to load 
+/// `room_id`       - The room who's saved compressor state we want to load
 pub fn read_room_compressor_state(
     client: &mut Client,
     room_id: &str,
@@ -242,14 +242,14 @@ impl<'a> fmt::Display for PGEscape<'a> {
 /// Returns the top [number] rooms with the most uncompressed state
 ///
 /// Uncompressed state is measured by number of rows in the state_groups_state
-/// table due to state groups with id's lower than where the compressor has gotten 
+/// table due to state groups with id's lower than where the compressor has gotten
 /// up to (i.e. the last_compressed value in the state_compressor_progress
 /// table).
 ///
 /// # Arguments
 ///
 /// `client`    -   A postgres client used to send the requests to the database
-/// `number`    -   How many groups to return 
+/// `number`    -   How many groups to return
 pub fn get_rooms_with_most_rows_to_compress(
     client: &mut Client,
     number: i64,

@@ -10,7 +10,6 @@ use crate::{
 };
 use synapse_compress_state::continue_run;
 
-
 /// Runs the compressor on a chunk of the room
 ///
 /// Returns `true` if the compressor has progressed
@@ -29,7 +28,7 @@ use synapse_compress_state::continue_run;
 /// * `chunk_size`      -   The number of state_groups to work on. All of the entries
 ///                         from state_groups_state are requested from the database
 ///                         for state groups that are worked on. Therefore small
-///                         chunk sizes may be needed on machines with low memory. 
+///                         chunk sizes may be needed on machines with low memory.
 ///                         (Note: if the compressor fails to find space savings on the
 ///                         chunk as a whole (which may well happen in rooms with lots
 ///                         of backfill in) then the entire chunk is skipped.)
@@ -49,8 +48,12 @@ pub fn run_compressor_on_room_chunk(
         .unwrap_or_else(|e| panic!("Error while connecting to {}: {}", db_url, e));
 
     // Access the database to find out where the compressor last got up to
-    let retrieved_state = read_room_compressor_state(&mut client, room_id)
-        .unwrap_or_else(|e| panic!("Unable to read compressor state for room {}: {}", room_id,e));
+    let retrieved_state = read_room_compressor_state(&mut client, room_id).unwrap_or_else(|e| {
+        panic!(
+            "Unable to read compressor state for room {}: {}",
+            room_id, e
+        )
+    });
 
     // If the database didn't contain any information, then use the default state
     let (start, level_info) = match retrieved_state {
@@ -123,7 +126,7 @@ pub fn run_compressor_on_room_chunk(
 /// * `chunk_size`      -   The number of state_groups to work on. All of the entries
 ///                         from state_groups_state are requested from the database
 ///                         for state groups that are worked on. Therefore small
-///                         chunk sizes may be needed on machines with low memory. 
+///                         chunk sizes may be needed on machines with low memory.
 ///                         (Note: if the compressor fails to find space savings on the
 ///                         chunk as a whole (which may well happen in rooms with lots
 ///                         of backfill in) then the entire chunk is skipped.)
@@ -167,7 +170,7 @@ fn compress_chunk_of_largest_room(
 /// * `chunk_size`      -   The number of state_groups to work on. All of the entries
 ///                         from state_groups_state are requested from the database
 ///                         for state groups that are worked on. Therefore small
-///                         chunk sizes may be needed on machines with low memory. 
+///                         chunk sizes may be needed on machines with low memory.
 ///                         (Note: if the compressor fails to find space savings on the
 ///                         chunk as a whole (which may well happen in rooms with lots
 ///                         of backfill in) then the entire chunk is skipped.)
@@ -191,7 +194,12 @@ pub fn compress_largest_rooms(
         .unwrap_or_else(|e| panic!("Error while connecting to {}: {}", db_url, e));
 
     let rooms_to_compress = get_rooms_with_most_rows_to_compress(&mut client, number)
-        .unwrap_or_else(|e| panic!("Error while trying to work out what room to compress next: {}",e));
+        .unwrap_or_else(|e| {
+            panic!(
+                "Error while trying to work out what room to compress next: {}",
+                e
+            )
+        });
 
     if rooms_to_compress.is_none() {
         return;
