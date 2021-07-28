@@ -157,10 +157,7 @@ fn compress_chunk_of_largest_room(
     }
 }
 
-/// Runs the compressor on a chunk of the room
-///
-/// Returns `true` if the compressor has progressed
-/// and `false` if it had already got to the end of the room
+/// Runs the compressor (in chunks) on the rooms with the most uncompressed state
 ///
 /// # Arguments
 ///
