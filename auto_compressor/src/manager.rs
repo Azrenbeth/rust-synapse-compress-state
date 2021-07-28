@@ -1,3 +1,7 @@
+//! This module contains functions that carry out diffferent types
+//! of compression on the database.
+
+
 use crate::{
     state_saving::{
         connect_to_database, get_rooms_with_most_rows_to_compress, read_room_compressor_state,
@@ -7,10 +11,34 @@ use crate::{
 };
 use synapse_compress_state::continue_run;
 
+
 /// Runs the compressor on a chunk of the room
 ///
-/// Returns true if the compressor has progressed
-/// And false if it had already got to the end of the room
+/// Returns `true` if the compressor has progressed
+/// and `false` if it had already got to the end of the room
+///
+/// # Arguments
+///
+/// * `db_url`          -   The URL of the postgres database that synapse is using.
+///                         e.g. "postgresql://user:password@domain.com/synapse"
+///
+/// * `room_id`         -   The id of the room to run the compressor on. Note this
+///                         is the id as stored in the database and will look like
+///                         "!aasdfasdfafdsdsa:matrix.org" instead of the common
+///                         name
+///
+/// * `chunk_size`      -   The number of state_groups to work on. All of the entries
+///                         from state_groups_state are requested from the database
+///                         for state groups that are worked on. Therefore small
+///                         chunk sizes may be needed on machines with low memory. 
+///                         (Note: if the compressor fails to find space savings on the
+///                         chunk as a whole (which may well happen in rooms with lots
+///                         of backfill in) then the entire chunk is skipped.)
+///
+/// * `default_levels`  -   If the compressor has never been run on this room before
+///                         Then we need to provide the compressor with some information
+///                         on what sort of compression structure we want. The default that
+///                         the library suggests is `vec!((100,0,None),(50,0,None),(25,0,None))`
 pub fn run_compressor_on_room_chunk(
     db_url: &str,
     room_id: &str,
@@ -83,10 +111,31 @@ pub fn run_compressor_on_room_chunk(
     true
 }
 
-/// Compresses a chunk of the 1st room in rooms_to_compress
+/// Compresses a chunk of the 1st room in the rooms_to_compress argument given
 ///
 /// If the 1st room has no more groups to compress then it
 /// removes that room from the rooms_to_compress vector
+///
+/// # Arguments
+///
+/// * `db_url`          -   The URL of the postgres database that synapse is using.
+///                         e.g. "postgresql://user:password@domain.com/synapse"
+///
+/// * `chunk_size`      -   The number of state_groups to work on. All of the entries
+///                         from state_groups_state are requested from the database
+///                         for state groups that are worked on. Therefore small
+///                         chunk sizes may be needed on machines with low memory. 
+///                         (Note: if the compressor fails to find space savings on the
+///                         chunk as a whole (which may well happen in rooms with lots
+///                         of backfill in) then the entire chunk is skipped.)
+///
+/// * `default_levels`  -   If the compressor has never been run on this room before
+///                         Then we need to provide the compressor with some information
+///                         on what sort of compression structure we want. The default that
+///                         the library suggests is `vec!((100,0,None),(50,0,None),(25,0,None))`
+///
+/// * `rooms_to_compress` - A vector of (room_id, number of uncompressed rows) tuples. This is a
+///                         list of all the rooms that need compressing
 fn compress_chunk_of_largest_room(
     db_url: &str,
     chunk_size: i64,
@@ -106,6 +155,32 @@ fn compress_chunk_of_largest_room(
     }
 }
 
+/// Runs the compressor on a chunk of the room
+///
+/// Returns `true` if the compressor has progressed
+/// and `false` if it had already got to the end of the room
+///
+/// # Arguments
+///
+/// * `db_url`          -   The URL of the postgres database that synapse is using.
+///                         e.g. "postgresql://user:password@domain.com/synapse"
+///
+/// * `chunk_size`      -   The number of state_groups to work on. All of the entries
+///                         from state_groups_state are requested from the database
+///                         for state groups that are worked on. Therefore small
+///                         chunk sizes may be needed on machines with low memory. 
+///                         (Note: if the compressor fails to find space savings on the
+///                         chunk as a whole (which may well happen in rooms with lots
+///                         of backfill in) then the entire chunk is skipped.)
+///
+/// * `default_levels`  -   If the compressor has never been run on this room before
+///                         Then we need to provide the compressor with some information
+///                         on what sort of compression structure we want. The default that
+///                         the library suggests is `vec!((100,0,None),(50,0,None),(25,0,None))`
+///
+/// * `number`          -   The number of rooms to compress. The larger this number is, the more
+///                         work that can be done before having to scan through the database again
+///                         to cound the uncompressed rows
 pub fn compress_largest_rooms(
     db_url: &str,
     chunk_size: i64,
