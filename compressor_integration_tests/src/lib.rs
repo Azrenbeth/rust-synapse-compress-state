@@ -115,6 +115,9 @@ pub fn database_collapsed_states_match_map(
         let map_state = collapse_state_with_map(state_group_map, *sg);
         let database_state = collapse_state_with_database(*sg);
         if map_state != database_state {
+            println!("database state {} doesn't match", sg);
+            println!("expected {:?}", map_state);
+            println!("but found {:?}", database_state);
             return false;
         }
     }
