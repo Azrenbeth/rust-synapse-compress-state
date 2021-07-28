@@ -50,7 +50,7 @@ pub fn line_segments_with_state(start: i64, end: i64) -> BTreeMap<i64, StateGrou
 
     for i in start..=end {
         // if the state is a snapshot then set its predecessor to NONE
-        if i % 3 == 0 {
+        if (i - start) % 3 == 0 {
             prev = None;
         }
 
@@ -63,7 +63,7 @@ pub fn line_segments_with_state(start: i64, end: i64) -> BTreeMap<i64, StateGrou
 
         // if it's a snapshot then add in all previous state
         if prev.is_none() {
-            for j in 0i64..i {
+            for j in start..i {
                 entry
                     .state_map
                     .insert("group", &j.to_string(), "seen".into());
@@ -168,13 +168,15 @@ pub fn compressed_3_3_from_0_to_13_with_state() -> BTreeMap<i64, StateGroupEntry
 //     ('group',  j, 'seen') - for all j less than i
 pub fn structure_from_edges_with_state(
     edges: BTreeMap<i64, i64>,
+    start: i64,
+    end: i64,
 ) -> BTreeMap<i64, StateGroupEntry> {
     let mut expected: BTreeMap<i64, StateGroupEntry> = BTreeMap::new();
 
     // Each group i has state:
     //     ('node','is',      i)
     //     ('group',  j, 'seen') - for all j less than i
-    for i in 0i64..=13i64 {
+    for i in start..=end {
         let prev = edges.get(&i);
 
         //change from Option<&i64> to Option<i64>
@@ -195,7 +197,7 @@ pub fn structure_from_edges_with_state(
                     .insert("group", &j.to_string(), "seen".into());
             }
         } else {
-            for j in 0i64..i {
+            for j in start..i {
                 entry
                     .state_map
                     .insert("group", &j.to_string(), "seen".into());

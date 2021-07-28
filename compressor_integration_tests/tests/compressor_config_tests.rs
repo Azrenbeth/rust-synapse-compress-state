@@ -423,7 +423,7 @@ fn run_respects_groups_to_compress() {
     .into_iter()
     .collect();
 
-    let expected = structure_from_edges_with_state(expected_edges);
+    let expected = structure_from_edges_with_state(expected_edges, 0, 13);
 
     // Check that the database still gives correct states for each group!
     assert!(database_collapsed_states_match_map(&initial));
