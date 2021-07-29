@@ -494,7 +494,10 @@ pub fn continue_run(
 
     let original_num_rows = state_group_map
         .iter()
-        .fold(0, |acc, (_, v)| acc + v.state_map.len());
+        .fold(0, |acc, (_, v)| match v.in_range {
+            true => acc + v.state_map.len(),
+            false => acc,
+        });
 
     // Now we actually call the compression algorithm.
     println!("Compressing state...");
@@ -504,7 +507,10 @@ pub fn continue_run(
     // Done! Now to print a bunch of stats.
     let new_num_rows = new_state_group_map
         .iter()
-        .fold(0, |acc, (_, v)| acc + v.state_map.len());
+        .fold(0, |acc, (_, v)| match v.in_range {
+            true => acc + v.state_map.len(),
+            false => acc,
+        });
 
     let ratio = (new_num_rows as f64) / (original_num_rows as f64);
 
