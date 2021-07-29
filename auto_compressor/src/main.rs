@@ -24,12 +24,13 @@ use std::{env, str::FromStr};
 /// Execution starts here
 fn main() {
     if env::var("COMPRESSOR_LOG_LEVEL").is_err() {
-        let mut log_builder = pretty_env_logger::formatted_builder();
+        let mut log_builder = pretty_env_logger::formatted_timed_builder();
         log_builder.filter_module("synapse_compress_state", LevelFilter::Warn);
         log_builder.filter_module("auto_compressor", LevelFilter::Info);
         log_builder.init();
     } else {
-        pretty_env_logger::init_custom_env("COMPRESSOR_LOG_LEVEL");
+        pretty_env_logger::try_init_timed_custom_env("COMPRESSOR_LOG_LEVEL")
+            .unwrap_or_else(|e| panic!("Error processing log level: {}", e));
     }
     // parse the command line arguments using the clap crate
     let arguments = App::new(crate_name!())

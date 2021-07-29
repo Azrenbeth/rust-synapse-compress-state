@@ -8,7 +8,7 @@ use crate::{
     },
     LevelState,
 };
-use log::{debug, info};
+use log::{debug, info, warn};
 use synapse_compress_state::{continue_run, ChunkStats};
 
 /// Runs the compressor on a chunk of the room
@@ -67,16 +67,16 @@ pub fn run_compressor_on_room_chunk(
 
     if option_chunk_stats.is_none() {
         debug!("No work to do on this room...");
-        return option_chunk_stats;
+        return None;
     }
 
     let chunk_stats = option_chunk_stats.unwrap();
 
-    println!("{:?}", chunk_stats);
+    debug!("{:?}", chunk_stats);
 
     // Check to see whether the compressor sent its changes to the database
     if !chunk_stats.commited {
-        println!(
+        warn!(
             "The compressor tried to increase the number of rows in {} between {:?} and {}. Skipping...",
             room_id, start, chunk_stats.last_compressed_group,
         );
@@ -145,23 +145,25 @@ fn compress_chunk_of_largest_room(
     chunk_size: i64,
     default_levels: &[LevelState],
     rooms_to_compress: &mut Vec<(String, i64)>,
-) {
+) -> Option<ChunkStats> {
     if rooms_to_compress.is_empty() {
         panic!("Called compress_chunk_of_largest_room with empty rooms_to_compress argument");
     }
 
     let (room_id, _) = rooms_to_compress.get(0).unwrap().clone();
 
-    info!(
+    debug!(
         "Running compressor on room {} with chunk size {}",
         room_id, chunk_size
     );
 
-    let did_work = run_compressor_on_room_chunk(db_url, &room_id, chunk_size, default_levels);
+    let work_done = run_compressor_on_room_chunk(db_url, &room_id, chunk_size, default_levels);
 
-    if did_work.is_none() {
+    if work_done.is_none() {
         rooms_to_compress.remove(0);
     }
+
+    work_done
 }
 
 /// Runs the compressor (in chunks) on the rooms with the most uncompressed state
@@ -211,7 +213,29 @@ pub fn compress_largest_rooms(
 
     let mut rooms_to_compress = rooms_to_compress.unwrap();
 
+    let mut skipped_chunks = 0;
+    let mut rows_saved = 0;
+    let mut chunks_processed = 0;
+    let mut first_pass = true;
+
     while !rooms_to_compress.is_empty() {
-        compress_chunk_of_largest_room(db_url, chunk_size, default_levels, &mut rooms_to_compress);
+        if first_pass {
+            info!("Compressing: {}", rooms_to_compress.get(0).unwrap().0);
+            first_pass = false;
+        }
+
+        let work_done = compress_chunk_of_largest_room(db_url, chunk_size, default_levels, &mut rooms_to_compress);
+        
+        if let Some(ref chunk_stats) = work_done {
+            if chunk_stats.commited {
+                rows_saved +=  chunk_stats.original_num_rows - chunk_stats.new_num_rows;
+            } else {
+                skipped_chunks += 1;
+            }
+            chunks_processed += 1;
+        } else {
+            info!("Finished compressing room. Saved {} rows. Skipped {}/{} chunks", rows_saved, skipped_chunks, chunks_processed);
+            first_pass = true;
+        }
     }
 }

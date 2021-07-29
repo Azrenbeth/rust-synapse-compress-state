@@ -586,6 +586,8 @@ fn check_that_maps_match(
             }
         })
         .expect("expected state to match");
+    
+    info!("New state map matches old one");
 }
 
 /// Gets the full state for a given group from the map (of deltas)
