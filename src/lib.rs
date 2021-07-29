@@ -20,6 +20,7 @@
 // of arguments - this hopefully doesn't make the code unclear
 #![allow(clippy::too_many_arguments)]
 
+use log::info;
 use pyo3::prelude::*;
 
 #[global_allocator]
@@ -500,7 +501,7 @@ pub fn continue_run(
         });
 
     // Now we actually call the compression algorithm.
-    println!("Compressing state...");
+    info!("Compressing state...");
     let compressor = Compressor::compress_from_save(&state_group_map, level_info);
     let new_state_group_map = &compressor.new_state_group_map;
 

@@ -19,6 +19,6 @@
 use synapse_compress_state as comp_state;
 
 fn main() {
-    pretty_env_logger::init();
+    pretty_env_logger::init_custom_env("COMPRESSOR_LOG_LEVEL");
     comp_state::run(comp_state::Config::parse_arguments());
 }

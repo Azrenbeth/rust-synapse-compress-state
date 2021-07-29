@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use log::info;
+use log::{debug, info};
 use openssl::ssl::{SslConnector, SslMethod, SslVerifyMode};
 use postgres::{fallible_iterator::FallibleIterator, types::ToSql, Client};
 use postgres_openssl::MakeTlsConnector;
@@ -380,10 +380,10 @@ fn get_initial_data_from_db(
         work_done += 1;
         if work_done > work_to_tick {
             work_to_tick *= 10;
-            info!("{} groups loaded", work_done);
+            debug!("{} groups loaded", work_done);
         }
     }
-    info!("{} groups loaded", work_done);
+    debug!("{} groups loaded", work_done);
 
     state_group_map
 }
@@ -586,7 +586,7 @@ pub fn send_changes_to_db(
         work_done += 1.0;
         if work_done > work_to_tick {
             work_to_tick += tick_work;
-            info!("{:.0}% of groups changed", work_done / total_work * 100.0);
+            debug!("{:.0}% of groups changed", work_done / total_work * 100.0);
         }
     }
 }

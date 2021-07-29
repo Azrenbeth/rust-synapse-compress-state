@@ -29,7 +29,7 @@
 //! ```
 
 // use indicatif::{ProgressBar, ProgressStyle};
-use log::info;
+use log::debug;
 use state_map::StateMap;
 use std::collections::BTreeMap;
 use string_cache::DefaultAtom as Atom;
@@ -232,7 +232,7 @@ impl<'a> Compressor<'a> {
             work_done += 1.0;
             if work_done > work_to_tick {
                 work_to_tick += tick_work;
-                info!(
+                debug!(
                     "{:.0}% of groups compressed",
                     work_done / total_work * 100.0
                 );

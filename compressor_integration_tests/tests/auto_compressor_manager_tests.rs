@@ -72,7 +72,7 @@ fn run_compressor_on_room_chunk_works() {
 #[test]
 #[serial(db)]
 fn compress_largest_rooms_compresses_multiple_rooms() {
-    pretty_env_logger::init();
+    pretty_env_logger::init_custom_env("COMPRESSOR_LOG_LEVEL");
     // This creates 2 with the following structure
     //
     // 0-1-2 3-4-5 6-7-8 9-10-11 12-13

@@ -22,7 +22,7 @@ use std::str::FromStr;
 
 /// Execution starts here
 fn main() {
-    pretty_env_logger::init();
+    pretty_env_logger::init_custom_env("COMPRESSOR_LOG_LEVEL");
     // parse the command line arguments using the clap crate
     let arguments = App::new(crate_name!())
         .version(crate_version!())
