@@ -8,8 +8,8 @@ use crate::{
     },
     LevelState,
 };
-use synapse_compress_state::{ChunkStats, continue_run};
 use log::{debug, info};
+use synapse_compress_state::{continue_run, ChunkStats};
 
 /// Runs the compressor on a chunk of the room
 ///

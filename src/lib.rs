@@ -578,12 +578,12 @@ fn check_that_maps_match(
 ) {
     println!("Checking that state maps match...");
 
-    let pb = ProgressBar::new(old_map.len() as u64);
-    pb.set_style(
-        ProgressStyle::default_bar().template("[{elapsed_precise}] {bar} {pos}/{len} {msg}"),
-    );
-    pb.set_message("state groups");
-    pb.enable_steady_tick(100);
+    // let pb = ProgressBar::new(old_map.len() as u64);
+    // pb.set_style(
+    //     ProgressStyle::default_bar().template("[{elapsed_precise}] {bar} {pos}/{len} {msg}"),
+    // );
+    // pb.set_message("state groups");
+    // pb.enable_steady_tick(100);
 
     // Now let's iterate through and assert that the state for each group
     // matches between the two versions.
@@ -593,7 +593,7 @@ fn check_that_maps_match(
             let expected = collapse_state_maps(&old_map, *sg);
             let actual = collapse_state_maps(&new_map, *sg);
 
-            pb.inc(1);
+            // pb.inc(1);
 
             if expected != actual {
                 println!("State Group: {}", sg);
@@ -606,7 +606,7 @@ fn check_that_maps_match(
         })
         .expect("expected state to match");
 
-    pb.finish();
+    // pb.finish();
 
     println!("New state map matches old one");
 }
