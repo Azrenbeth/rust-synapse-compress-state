@@ -131,6 +131,7 @@ dependencies = [
  "openssl",
  "postgres",
  "postgres-openssl",
+ "pretty_env_logger",
  "rand",
  "serial_test",
  "state-map",

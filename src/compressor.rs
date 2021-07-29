@@ -29,7 +29,7 @@
 //! ```
 
 // use indicatif::{ProgressBar, ProgressStyle};
-use log::debug;
+use log::info;
 use state_map::StateMap;
 use std::collections::BTreeMap;
 use string_cache::DefaultAtom as Atom;
@@ -177,17 +177,11 @@ impl<'a> Compressor<'a> {
             panic!("Can only call `create_new_tree` once");
         }
 
-        //
-        // let pb = ProgressBar::new(self.original_state_map.len() as u64);
-        // pb.set_style(
-        //     ProgressStyle::default_bar().template("[{elapsed_precise}] {bar} {pos}/{len} {msg}"),
-        // );
-        // pb.set_message("state groups");
-        // pb.enable_steady_tick(100);
+        // setup progress bar (in debug logs only)
         let total_work = self.original_state_map.len() as f64;
-        let work_to_tick = total_work / 10.0;
+        let tick_work = total_work / 10.0;
+        let mut work_to_tick = tick_work;
         let mut work_done = 0.0;
-        let mut ticks = 0;
 
         for (&state_group, entry) in self.original_state_map {
             // Check whether this entry is in_range or is just present in the map due to being
@@ -234,16 +228,16 @@ impl<'a> Compressor<'a> {
                 },
             );
 
+            // update work_done and print debug info if needed
             work_done += 1.0;
             if work_done > work_to_tick {
-                work_done -= work_to_tick;
-                ticks += 10;
-                debug!("{}% of way through", ticks);
+                work_to_tick += tick_work;
+                info!(
+                    "{:.0}% of groups compressed",
+                    work_done / total_work * 100.0
+                );
             }
-            // pb.inc(1);
         }
-
-        // pb.finish();
     }
 
     /// Attempts to calculate the delta between two state groups.

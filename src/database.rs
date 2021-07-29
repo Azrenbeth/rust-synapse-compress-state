@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use indicatif::{ProgressBar, ProgressStyle};
+use log::info;
 use openssl::ssl::{SslConnector, SslMethod, SslVerifyMode};
 use postgres::{fallible_iterator::FallibleIterator, types::ToSql, Client};
 use postgres_openssl::MakeTlsConnector;
@@ -353,11 +353,10 @@ fn get_initial_data_from_db(
     // Copy the data from the database into a map
     let mut state_group_map: BTreeMap<i64, StateGroupEntry> = BTreeMap::new();
 
-    let pb = ProgressBar::new_spinner();
-    pb.set_style(
-        ProgressStyle::default_spinner().template("{spinner} [{elapsed}] {pos} rows retrieved"),
-    );
-    pb.enable_steady_tick(100);
+    // setup progress bar (in debug logs only)
+    // logs after every power of 10 is reached
+    let mut work_to_tick = 1;
+    let mut work_done = 0;
 
     while let Some(row) = rows.next().unwrap() {
         // The row in the map to copy the data to
@@ -377,11 +376,14 @@ fn get_initial_data_from_db(
             );
         }
 
-        pb.inc(1);
+        // update work_done and print debug info if needed
+        work_done += 1;
+        if work_done > work_to_tick {
+            work_to_tick *= 10;
+            info!("{} groups loaded", work_done);
+        }
     }
-
-    pb.set_length(pb.position());
-    pb.finish();
+    info!("{} groups loaded", work_done);
 
     state_group_map
 }
@@ -509,15 +511,13 @@ pub fn send_changes_to_db(
 
     let mut client = Client::connect(db_url, connector).unwrap();
 
-    println!("Writing changes...");
+    info!("Writing changes...");
 
-    // setup the progress bar
-    let pb = ProgressBar::new(old_map.len() as u64);
-    pb.set_style(
-        ProgressStyle::default_bar().template("[{elapsed_precise}] {bar} {pos}/{len} {msg}"),
-    );
-    pb.set_message("state groups");
-    pb.enable_steady_tick(100);
+    // setup progress bar (in debug logs only)
+    let total_work = old_map.len() as f64;
+    let tick_work = total_work / 10.0;
+    let mut work_to_tick = tick_work;
+    let mut work_done = 0.0;
 
     // Go through all groups in the old_map (what is currently in the database)
     for (sg, old_entry) in old_map {
@@ -580,10 +580,13 @@ pub fn send_changes_to_db(
             let mut single_group_transaction = client.transaction().unwrap();
             single_group_transaction.batch_execute(&sql).unwrap();
             single_group_transaction.commit().unwrap();
+
+            // update work_done and print debug info if needed
         }
-
-        pb.inc(1);
+        work_done += 1.0;
+        if work_done > work_to_tick {
+            work_to_tick += tick_work;
+            info!("{:.0}% of groups changed", work_done / total_work * 100.0);
+        }
     }
-
-    pb.finish();
 }
