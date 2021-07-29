@@ -217,7 +217,7 @@ fn load_map_from_db(
         max_group_found,
     ));
 
-    println!("Got initial state from database. Checking for any missing state groups...");
+    debug!("Got initial state from database. Checking for any missing state groups...");
 
     // Due to reasons some of the state groups appear in the edges table, but
     // not in the state_groups_state table.

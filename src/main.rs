@@ -16,9 +16,18 @@
 //! Synapse instance's database. Specifically, it aims to reduce the number of
 //! rows that a given room takes up in the `state_groups_state` table.
 
+use std::env;
+
+use log::LevelFilter;
 use synapse_compress_state as comp_state;
 
 fn main() {
-    pretty_env_logger::init_custom_env("COMPRESSOR_LOG_LEVEL");
+    if env::var("COMPRESSOR_LOG_LEVEL").is_err() {
+        let mut log_builder = pretty_env_logger::formatted_builder();
+        log_builder.filter_module("synapse_compress_state", LevelFilter::Debug);
+        log_builder.init();
+    } else {
+        pretty_env_logger::init_custom_env("COMPRESSOR_LOG_LEVEL");
+    }
     comp_state::run(comp_state::Config::parse_arguments());
 }

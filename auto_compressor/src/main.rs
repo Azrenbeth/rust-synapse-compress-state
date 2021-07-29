@@ -18,11 +18,19 @@
 
 use auto_compressor::{manager, state_saving, LevelState};
 use clap::{crate_authors, crate_description, crate_name, crate_version, value_t, App, Arg};
-use std::str::FromStr;
+use log::LevelFilter;
+use std::{env, str::FromStr};
 
 /// Execution starts here
 fn main() {
-    pretty_env_logger::init_custom_env("COMPRESSOR_LOG_LEVEL");
+    if env::var("COMPRESSOR_LOG_LEVEL").is_err() {
+        let mut log_builder = pretty_env_logger::formatted_builder();
+        log_builder.filter_module("synapse_compress_state", LevelFilter::Warn);
+        log_builder.filter_module("auto_compressor", LevelFilter::Info);
+        log_builder.init();
+    } else {
+        pretty_env_logger::init_custom_env("COMPRESSOR_LOG_LEVEL");
+    }
     // parse the command line arguments using the clap crate
     let arguments = App::new(crate_name!())
         .version(crate_version!())

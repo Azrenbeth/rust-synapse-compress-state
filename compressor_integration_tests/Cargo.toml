@@ -15,6 +15,7 @@ rand = "0.8.0"
 synapse_compress_state = { path = "../" }
 auto_compressor = { path = "../auto_compressor/" }
 pretty_env_logger = "0.4.0"
+log = "0.4.14"
 
 [dependencies.state-map]
 git = "https://github.com/matrix-org/rust-matrix-state-map"

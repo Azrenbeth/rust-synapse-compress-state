@@ -20,7 +20,7 @@
 // of arguments - this hopefully doesn't make the code unclear
 #![allow(clippy::too_many_arguments)]
 
-use log::info;
+use log::{info, warn};
 use pyo3::prelude::*;
 
 #[global_allocator]
@@ -515,28 +515,8 @@ pub fn continue_run(
 
     let ratio = (new_num_rows as f64) / (original_num_rows as f64);
 
-    println!(
-        "Number of rows after compression: {} ({:.2}%)",
-        new_num_rows,
-        ratio * 100.
-    );
-
-    println!("Compression Statistics:");
-    println!(
-        "  Number of forced resets due to lacking prev: {}",
-        compressor.stats.resets_no_suitable_prev
-    );
-    println!(
-        "  Number of compressed rows caused by the above: {}",
-        compressor.stats.resets_no_suitable_prev_size
-    );
-    println!(
-        "  Number of state groups changed: {}",
-        compressor.stats.state_groups_changed
-    );
-
     if ratio > 1.0 {
-        println!("This compression would not remove any rows. Aborting.");
+        warn!("This compression would not remove any rows. Aborting.");
         return Some(ChunkStats {
             new_level_info: compressor.get_level_info(),
             last_compressed_group: max_group_found,
@@ -577,7 +557,7 @@ fn check_that_maps_match(
     old_map: &BTreeMap<i64, StateGroupEntry>,
     new_map: &BTreeMap<i64, StateGroupEntry>,
 ) {
-    println!("Checking that state maps match...");
+    info!("Checking that state maps match...");
 
     // let pb = ProgressBar::new(old_map.len() as u64);
     // pb.set_style(
@@ -606,10 +586,6 @@ fn check_that_maps_match(
             }
         })
         .expect("expected state to match");
-
-    // pb.finish();
-
-    println!("New state map matches old one");
 }
 
 /// Gets the full state for a given group from the map (of deltas)
