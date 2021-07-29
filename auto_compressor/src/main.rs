@@ -43,7 +43,7 @@ fn main() {
                 .value_name("COUNT")
                 .help("The maximum number of state groups to load into memroy at once")
                 .long_help(concat!(
-                    "The number of state_groups to work on. All of the entries",
+                    "The number of state_groups to work on at once. All of the entries",
                     " from state_groups_state are requested from the database",
                     " for state groups that are worked on. Therefore small",
                     " chunk sizes may be needed on machines with low memory.",
