@@ -312,3 +312,48 @@ $ docker-compose up -d
 $ cargo test --all
 $ docker-compose down
 ```
+
+# Troubleshooting
+
+## Connecting to database
+
+### From local machine
+
+If you setup synapse using the instructions on https://matrix-org.github.io/synapse/latest/postgres.html
+you should have a username and password to use to login to the postgres database. To run the compressor
+from the machine where postgres is running, the url will be the following:
+
+`postgresql://synapse_user:synapse_password@localhost/synapse`
+
+### From remote machine
+
+If you wish to connect from a different machine, you'll need to edit your postgres settings to allow
+remote connections (this is not reccomeneded unless absolutely neccessary!). 
+
+To `/etc/postgresql/12/main/pg_hba.conf` add the following:
+
+```
+#   TYPE    DATABASE  USER            ADDREESS    METHOD
+    host    synapse   synapse_user    ADDR        md5
+```
+Substitute `ADDR` with the ip address of the machine you wish to connect from followed by `/32` (if it is
+an ipv4 address) or `/128` if it's an ipv6 address (e.g. `234.123.42.555/32` or `3a:23:5d::23:37/128`)
+
+If you want to be able to connect from any address (**for testing ONLY**) then you can use 
+`0.0.0.0/0` or `::1/0`
+
+To `/etc/postgresql/12/main/postgresql.conf` add the following:
+
+```
+listen_addresses = 'localhost, IP_ADDR'
+```
+Substitute `IP_ADDR` with your ip address (WITHOUT the `/32` or `/128` that was used in `pg_hba.conf`)
+
+If you want to allow connections from any address (**for testing ONLY**) then substitute `IP_ADDR` with `*`
+
+### Non default port
+
+By default it tries to connect to a postgres server running on port 5432. If you have configured your
+database to use a different port then the URL will take the following form:
+
+`postgresql://synapse_user:synapse_password@mydomain:PORT/synapse`
