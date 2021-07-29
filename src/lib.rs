@@ -497,6 +497,7 @@ pub fn continue_run(
         .fold(0, |acc, (_, v)| acc + v.state_map.len());
 
     // Now we actually call the compression algorithm.
+    println!("Compressing state...");
     let compressor = Compressor::compress_from_save(&state_group_map, level_info);
     let new_state_group_map = &compressor.new_state_group_map;
 

@@ -65,6 +65,7 @@ pub fn run_compressor_on_room_chunk(
     let option_chunk_stats = continue_run(start, chunk_size, db_url, room_id, &level_info);
 
     if option_chunk_stats.is_none() {
+        println!("No work to do on this room...");
         return false;
     }
 
@@ -150,11 +151,14 @@ fn compress_chunk_of_largest_room(
 
     let (room_id, _) = rooms_to_compress.get(0).unwrap().clone();
 
+    println!("Running compressor on room {} with chunk size {}", room_id, chunk_size);
+
     let did_work = run_compressor_on_room_chunk(db_url, &room_id, chunk_size, default_levels);
 
     if !did_work {
         rooms_to_compress.remove(0);
     }
+    println!();
 }
 
 /// Runs the compressor (in chunks) on the rooms with the most uncompressed state
