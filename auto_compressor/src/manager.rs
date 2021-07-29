@@ -8,12 +8,13 @@ use crate::{
     },
     LevelState,
 };
-use synapse_compress_state::continue_run;
+use synapse_compress_state::{ChunkStats, continue_run};
+use log::{debug, info};
 
 /// Runs the compressor on a chunk of the room
 ///
-/// Returns `true` if the compressor has progressed
-/// and `false` if it had already got to the end of the room
+/// Returns `Some(chunk_stats)` if the compressor has progressed
+/// and `None` if it had already got to the end of the room
 ///
 /// # Arguments
 ///
@@ -42,7 +43,7 @@ pub fn run_compressor_on_room_chunk(
     room_id: &str,
     chunk_size: i64,
     default_levels: &[LevelState],
-) -> bool {
+) -> Option<ChunkStats> {
     // connect to the database
     let mut client = connect_to_database(db_url)
         .unwrap_or_else(|e| panic!("Error while connecting to {}: {}", db_url, e));
@@ -65,8 +66,8 @@ pub fn run_compressor_on_room_chunk(
     let option_chunk_stats = continue_run(start, chunk_size, db_url, room_id, &level_info);
 
     if option_chunk_stats.is_none() {
-        println!("No work to do on this room...");
-        return false;
+        debug!("No work to do on this room...");
+        return option_chunk_stats;
     }
 
     let chunk_stats = option_chunk_stats.unwrap();
@@ -94,7 +95,7 @@ pub fn run_compressor_on_room_chunk(
             )
         });
 
-        return true;
+        return Some(chunk_stats);
     }
 
     // Save where we got up to after this successful commit
@@ -111,7 +112,7 @@ pub fn run_compressor_on_room_chunk(
         )
     });
 
-    true
+    Some(chunk_stats)
 }
 
 /// Compresses a chunk of the 1st room in the rooms_to_compress argument given
@@ -151,14 +152,16 @@ fn compress_chunk_of_largest_room(
 
     let (room_id, _) = rooms_to_compress.get(0).unwrap().clone();
 
-    println!("Running compressor on room {} with chunk size {}", room_id, chunk_size);
+    info!(
+        "Running compressor on room {} with chunk size {}",
+        room_id, chunk_size
+    );
 
     let did_work = run_compressor_on_room_chunk(db_url, &room_id, chunk_size, default_levels);
 
-    if !did_work {
+    if did_work.is_none() {
         rooms_to_compress.remove(0);
     }
-    println!();
 }
 
 /// Runs the compressor (in chunks) on the rooms with the most uncompressed state

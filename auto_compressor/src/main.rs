@@ -22,6 +22,7 @@ use std::str::FromStr;
 
 /// Execution starts here
 fn main() {
+    pretty_env_logger::init();
     // parse the command line arguments using the clap crate
     let arguments = App::new(crate_name!())
         .version(crate_version!())
