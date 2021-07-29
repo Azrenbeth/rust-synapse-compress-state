@@ -161,6 +161,32 @@ the levels effect the performance of fetching the state from the database, as th
 sum of the sizes is the upper bound on number of iterations needed to fetch a
 given set of state. [default's to "100,50,25"]
 
+## Scheduling the compressor
+Create the following script and save it somewhere sensible
+(e.g. `/home/synapse/compress.sh`)
+
+```
+#!/bin/bash
+URL=postgresql://user::pass@domain.com/synapse
+CHUNK_SIZE=5000
+LEVELS="100,50,25"
+NUMBER_OF_ROOMS=10
+
+/home/synapse/rust-synapse-compress-state/target/debug/auto_compressor \
+-p $URL \
+-c $CHUNK_SIZE \
+-l $LEVELS \
+-n $NUMBER_OF_ROOMS
+```
+
+And make it executable with `chmod +x compress.sh`
+
+Then run `crontab -e` to edit your scheduled tasks and add the following:
+
+```
+# Run every day at 3:00am
+00 3 * * * /home/synapse/compress.sh
+```
 # Manual tool: synapse_compress_state
 
 ## Introduction
