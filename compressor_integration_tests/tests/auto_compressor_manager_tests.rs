@@ -74,13 +74,12 @@ fn run_compressor_on_room_chunk_works() {
 #[serial(db)]
 fn compress_largest_rooms_compresses_multiple_rooms() {
     if env::var("COMPRESSOR_LOG_LEVEL").is_err() {
-        let mut log_builder = pretty_env_logger::formatted_timed_builder();
+        let mut log_builder = env_logger::builder();
         log_builder.filter_module("synapse_compress_state", LevelFilter::Warn);
         log_builder.filter_module("auto_compressor", LevelFilter::Info);
         log_builder.init();
     } else {
-        pretty_env_logger::try_init_timed_custom_env("COMPRESSOR_LOG_LEVEL")
-            .unwrap_or_else(|e| panic!("Error processing log level: {}", e));
+        env_logger::Builder::from_env("COMPRESSOR_LOG_LEVEL").init();
     }
     // This creates 2 with the following structure
     //

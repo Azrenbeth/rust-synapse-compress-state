@@ -17,18 +17,19 @@
 //! rows that a given room takes up in the `state_groups_state` table.
 
 use std::env;
+use std::io::Write;
 
 use log::LevelFilter;
 use synapse_compress_state as comp_state;
 
 fn main() {
     if env::var("COMPRESSOR_LOG_LEVEL").is_err() {
-        let mut log_builder = pretty_env_logger::formatted_timed_builder();
+        let mut log_builder = env_logger::builder();
+        log_builder.format(|buf, record| writeln!(buf, "{}", record.args()));
         log_builder.filter_module("synapse_compress_state", LevelFilter::Debug);
         log_builder.init();
     } else {
-        pretty_env_logger::try_init_timed_custom_env("COMPRESSOR_LOG_LEVEL")
-            .unwrap_or_else(|e| panic!("Error processing log level: {}", e));
+        env_logger::Builder::from_env("COMPRESSOR_LOG_LEVEL").init();
     }
     
     comp_state::run(comp_state::Config::parse_arguments());

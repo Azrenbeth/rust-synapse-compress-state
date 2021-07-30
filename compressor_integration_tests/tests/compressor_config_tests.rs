@@ -1,4 +1,4 @@
-use std::collections::BTreeMap;
+use std::{collections::BTreeMap, env};
 
 use compressor_integration_tests::{
     add_contents_to_database, database_collapsed_states_match_map, database_structure_matches_map,
@@ -9,7 +9,9 @@ use compressor_integration_tests::{
     },
     DB_URL,
 };
+use log::LevelFilter;
 use serial_test::serial;
+use std::io::Write;
 use synapse_compress_state::{run, Config};
 
 // Remember to add #[serial(db)] before any test that access the database.
@@ -22,6 +24,14 @@ use synapse_compress_state::{run, Config};
 #[test]
 #[serial(db)]
 fn run_succeeds_without_crashing() {
+    if env::var("COMPRESSOR_LOG_LEVEL").is_err() {
+        let mut log_builder = env_logger::builder();
+        log_builder.format(|buf, record| writeln!(buf, "{}", record.args()));
+        log_builder.filter_module("synapse_compress_state", LevelFilter::Debug);
+        log_builder.init();
+    } else {
+        env_logger::Builder::from_env("COMPRESSOR_LOG_LEVEL").init();
+    }
     // This starts with the following structure
     //
     // 0-1-2-3-4-5-6-7-8-9-10-11-12-13
