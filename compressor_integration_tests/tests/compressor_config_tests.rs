@@ -1,4 +1,4 @@
-use std::{collections::BTreeMap, env};
+use std::collections::BTreeMap;
 
 use compressor_integration_tests::{
     add_contents_to_database, database_collapsed_states_match_map, database_structure_matches_map,
@@ -7,11 +7,9 @@ use compressor_integration_tests::{
         compressed_3_3_from_0_to_13_with_state, line_segments_with_state, line_with_state,
         structure_from_edges_with_state,
     },
-    DB_URL,
+    setup_logger, DB_URL,
 };
-use log::LevelFilter;
 use serial_test::serial;
-use std::io::Write;
 use synapse_compress_state::{run, Config};
 
 // Remember to add #[serial(db)] before any test that access the database.
@@ -24,14 +22,7 @@ use synapse_compress_state::{run, Config};
 #[test]
 #[serial(db)]
 fn run_succeeds_without_crashing() {
-    if env::var("COMPRESSOR_LOG_LEVEL").is_err() {
-        let mut log_builder = env_logger::builder();
-        log_builder.format(|buf, record| writeln!(buf, "{}", record.args()));
-        log_builder.filter_module("synapse_compress_state", LevelFilter::Debug);
-        log_builder.init();
-    } else {
-        env_logger::Builder::from_env("COMPRESSOR_LOG_LEVEL").init();
-    }
+    setup_logger();
     // This starts with the following structure
     //
     // 0-1-2-3-4-5-6-7-8-9-10-11-12-13
@@ -74,6 +65,7 @@ fn run_succeeds_without_crashing() {
 #[test]
 #[serial(db)]
 fn changes_commited_if_no_min_saved_rows() {
+    setup_logger();
     // This starts with the following structure
     //
     // 0-1-2 3-4-5 6-7-8 9-10-11 12-13
@@ -136,6 +128,7 @@ fn changes_commited_if_no_min_saved_rows() {
 #[test]
 #[serial(db)]
 fn changes_commited_if_min_saved_rows_exceeded() {
+    setup_logger();
     // This starts with the following structure
     //
     // 0-1-2 3-4-5 6-7-8 9-10-11 12-13
@@ -198,6 +191,7 @@ fn changes_commited_if_min_saved_rows_exceeded() {
 #[test]
 #[serial(db)]
 fn changes_not_commited_if_fewer_than_min_saved_rows() {
+    setup_logger();
     // This starts with the following structure
     //
     // 0-1-2 3-4-5 6-7-8 9-10-11 12-13
@@ -261,6 +255,7 @@ fn changes_not_commited_if_fewer_than_min_saved_rows() {
 #[test]
 #[should_panic]
 fn run_panics_if_invalid_db_url() {
+    setup_logger();
     // set up the config options
     let db_url = "thisIsAnInvalidURL".to_string();
     let output_file = "./tests/tmp/run_panics_if_invalid_db_url.sql".to_string();
@@ -293,6 +288,7 @@ fn run_panics_if_invalid_db_url() {
 #[test]
 #[serial(db)]
 fn run_only_affects_given_room_id() {
+    setup_logger();
     // build room1 stuff up
     // This starts with the following structure
     //
@@ -366,6 +362,7 @@ fn run_only_affects_given_room_id() {
 #[test]
 #[serial(db)]
 fn run_respects_groups_to_compress() {
+    setup_logger();
     // This starts with the following structure
     //
     // 0-1-2 3-4-5 6-7-8 9-10-11 12-13
@@ -445,6 +442,7 @@ fn run_respects_groups_to_compress() {
 #[test]
 #[serial(db)]
 fn run_is_idempotent_when_run_on_whole_room() {
+    setup_logger();
     // This starts with the following structure
     //
     // 0-1-2 3-4-5 6-7-8 9-10-11 12-13

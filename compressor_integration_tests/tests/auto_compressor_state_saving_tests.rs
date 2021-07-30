@@ -5,12 +5,13 @@ use auto_compressor::{
     },
     LevelState,
 };
-use compressor_integration_tests::{clear_compressor_state, DB_URL};
+use compressor_integration_tests::{clear_compressor_state, setup_logger, DB_URL};
 use serial_test::serial;
 
 #[test]
 #[serial(db)]
 fn write_then_read_state_gives_correct_results() {
+    setup_logger();
     let mut client = connect_to_database(DB_URL).unwrap();
     create_tables_if_needed(&mut client).unwrap();
     clear_compressor_state();

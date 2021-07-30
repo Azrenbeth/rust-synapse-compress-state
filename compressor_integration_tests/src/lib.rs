@@ -1,9 +1,10 @@
+use log::LevelFilter;
 use openssl::ssl::{SslConnector, SslMethod, SslVerifyMode};
 use postgres::{fallible_iterator::FallibleIterator, Client};
 use postgres_openssl::MakeTlsConnector;
 use rand::{distributions::Alphanumeric, thread_rng, Rng};
 use state_map::StateMap;
-use std::{borrow::Cow, collections::BTreeMap, fmt};
+use std::{borrow::Cow, collections::BTreeMap, env, fmt};
 use string_cache::DefaultAtom as Atom;
 
 use synapse_compress_state::StateGroupEntry;
@@ -345,4 +346,22 @@ fn functions_are_self_consistent() {
 
     assert!(database_collapsed_states_match_map(&initial));
     assert!(database_structure_matches_map(&initial));
+}
+
+pub fn setup_logger() {
+    if env::var("COMPRESSOR_LOG_LEVEL").is_err() {
+        let mut log_builder = env_logger::builder();
+        log_builder.is_test(true);
+        log_builder.filter_module("synapse_compress_state", LevelFilter::Debug);
+        log_builder.filter_module("auto_compressor", LevelFilter::Debug);
+        if log_builder.try_init().is_err() {
+            return;
+        };
+    } else {
+        let mut log_builder = env_logger::Builder::from_env("COMPRESSOR_LOG_LEVEL");
+        log_builder.is_test(true);
+        if log_builder.try_init().is_err() {
+            return;
+        }
+    }
 }

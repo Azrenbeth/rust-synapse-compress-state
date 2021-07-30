@@ -1,4 +1,4 @@
-use std::{collections::BTreeMap, env};
+use std::collections::BTreeMap;
 
 use auto_compressor::{
     manager::{compress_largest_rooms, run_compressor_on_room_chunk},
@@ -11,9 +11,8 @@ use compressor_integration_tests::{
         compressed_3_3_from_0_to_13_with_state, line_segments_with_state,
         structure_from_edges_with_state,
     },
-    DB_URL,
+    setup_logger, DB_URL,
 };
-use log::LevelFilter;
 use serial_test::serial;
 use state_map::StateMap;
 use synapse_compress_state::StateGroupEntry;
@@ -21,6 +20,7 @@ use synapse_compress_state::StateGroupEntry;
 #[test]
 #[serial(db)]
 fn run_compressor_on_room_chunk_works() {
+    setup_logger();
     // This starts with the following structure
     //
     // 0-1-2 3-4-5 6-7-8 9-10-11 12-13
@@ -73,14 +73,7 @@ fn run_compressor_on_room_chunk_works() {
 #[test]
 #[serial(db)]
 fn compress_largest_rooms_compresses_multiple_rooms() {
-    if env::var("COMPRESSOR_LOG_LEVEL").is_err() {
-        let mut log_builder = env_logger::builder();
-        log_builder.filter_module("synapse_compress_state", LevelFilter::Warn);
-        log_builder.filter_module("auto_compressor", LevelFilter::Info);
-        log_builder.init();
-    } else {
-        env_logger::Builder::from_env("COMPRESSOR_LOG_LEVEL").init();
-    }
+    setup_logger();
     // This creates 2 with the following structure
     //
     // 0-1-2 3-4-5 6-7-8 9-10-11 12-13
@@ -157,6 +150,7 @@ fn compress_largest_rooms_compresses_multiple_rooms() {
 #[test]
 #[serial(db)]
 fn compress_largest_rooms_does_largest_rooms() {
+    setup_logger();
     // This creates 2 with the following structure
     //
     // 0-1-2 3-4-5 (room1)
@@ -232,6 +226,7 @@ fn compress_largest_rooms_does_largest_rooms() {
 #[test]
 #[serial(db)]
 fn compress_largest_rooms_skips_already_compressed_when_rerun() {
+    setup_logger();
     // This test builds two rooms in the database and then calls compress_largest_rooms
     // with a number argument of 1 (i.e. only the larger of the two rooms should be
     // compressed)

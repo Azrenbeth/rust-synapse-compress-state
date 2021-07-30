@@ -273,7 +273,7 @@ impl Config {
 
 pub fn run(mut config: Config) {
     // First we need to get the current state groups
-    println!("Fetching state from DB for room '{}'...", config.room_id);
+    info!("Fetching state from DB for room '{}'...", config.room_id);
 
     let (state_group_map, max_group_found) = database::get_data_from_db(
         &config.db_url,
@@ -283,19 +283,19 @@ pub fn run(mut config: Config) {
     )
     .unwrap_or_else(|| panic!("No state groups found within this range"));
 
-    println!("Fetched state groups up to {}", max_group_found);
+    info!("Fetched state groups up to {}", max_group_found);
 
-    println!("Number of state groups: {}", state_group_map.len());
+    info!("Number of state groups: {}", state_group_map.len());
 
     let original_summed_size = state_group_map
         .iter()
         .fold(0, |acc, (_, v)| acc + v.state_map.len());
 
-    println!("Number of rows in current table: {}", original_summed_size);
+    info!("Number of rows in current table: {}", original_summed_size);
 
     // Now we actually call the compression algorithm.
 
-    println!("Compressing state...");
+    info!("Compressing state...");
 
     let compressor = Compressor::compress(&state_group_map, &config.level_sizes.0);
 
@@ -309,22 +309,22 @@ pub fn run(mut config: Config) {
 
     let ratio = (compressed_summed_size as f64) / (original_summed_size as f64);
 
-    println!(
+    info!(
         "Number of rows after compression: {} ({:.2}%)",
         compressed_summed_size,
         ratio * 100.
     );
 
-    println!("Compression Statistics:");
-    println!(
+    info!("Compression Statistics:");
+    info!(
         "  Number of forced resets due to lacking prev: {}",
         compressor.stats.resets_no_suitable_prev
     );
-    println!(
+    info!(
         "  Number of compressed rows caused by the above: {}",
         compressor.stats.resets_no_suitable_prev_size
     );
-    println!(
+    info!(
         "  Number of state groups changed: {}",
         compressor.stats.state_groups_changed
     );
@@ -334,14 +334,14 @@ pub fn run(mut config: Config) {
     }
 
     if ratio > 1.0 {
-        println!("This compression would not remove any rows. Aborting.");
+        warn!("This compression would not remove any rows. Aborting.");
         return;
     }
 
     if let Some(min) = config.min_saved_rows {
         let saving = (original_summed_size - compressed_summed_size) as i32;
         if saving < min {
-            println!(
+            warn!(
                 "Only {} rows would be saved by this compression. Skipping output.",
                 saving
             );
@@ -392,7 +392,7 @@ fn output_sql(
         return;
     }
 
-    println!("Writing changes...");
+    info!("Writing changes...");
 
     let pb = ProgressBar::new(old_map.len() as u64);
     pb.set_style(

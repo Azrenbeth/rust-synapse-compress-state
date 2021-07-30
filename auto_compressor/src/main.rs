@@ -25,7 +25,7 @@ use std::{env, str::FromStr};
 fn main() {
     if env::var("COMPRESSOR_LOG_LEVEL").is_err() {
         let mut log_builder = env_logger::builder();
-        log_builder.filter_module("synapse_compress_state", LevelFilter::Warn);
+        log_builder.filter_module("synapse_compress_state", LevelFilter::Error);
         log_builder.filter_module("auto_compressor", LevelFilter::Info);
         log_builder.init();
     } else {
