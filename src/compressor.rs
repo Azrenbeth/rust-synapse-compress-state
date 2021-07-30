@@ -198,39 +198,38 @@ impl<'a> Compressor<'a> {
                 // could probably be removed...
                 assert!(new_entry == *entry);
                 self.new_state_group_map.insert(state_group, new_entry);
-
-                continue;
-            }
-            let mut prev_state_group = None;
-            for level in &mut self.levels {
-                if level.has_space() {
-                    prev_state_group = level.get_current();
-                    level.update(state_group, true);
-                    break;
-                } else {
-                    level.update(state_group, false);
-                }
-            }
-
-            let (delta, prev_state_group) = if entry.prev_state_group == prev_state_group {
-                (entry.state_map.clone(), prev_state_group)
             } else {
-                self.stats.state_groups_changed += 1;
-                self.get_delta(prev_state_group, state_group)
-            };
+                let mut prev_state_group = None;
+                for level in &mut self.levels {
+                    if level.has_space() {
+                        prev_state_group = level.get_current();
+                        level.update(state_group, true);
+                        break;
+                    } else {
+                        level.update(state_group, false);
+                    }
+                }
 
-            self.new_state_group_map.insert(
-                state_group,
-                StateGroupEntry {
-                    in_range: true,
-                    prev_state_group,
-                    state_map: delta,
-                },
-            );
+                let (delta, prev_state_group) = if entry.prev_state_group == prev_state_group {
+                    (entry.state_map.clone(), prev_state_group)
+                } else {
+                    self.stats.state_groups_changed += 1;
+                    self.get_delta(prev_state_group, state_group)
+                };
+
+                self.new_state_group_map.insert(
+                    state_group,
+                    StateGroupEntry {
+                        in_range: true,
+                        prev_state_group,
+                        state_map: delta,
+                    },
+                );
+            }
 
             // update work_done and print debug info if needed
             work_done += 1.0;
-            if work_done > work_to_tick {
+            if work_done >= work_to_tick {
                 work_to_tick += tick_work;
                 debug!(
                     "{:.0}% of groups compressed",

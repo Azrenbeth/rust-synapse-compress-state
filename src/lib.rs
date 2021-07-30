@@ -586,7 +586,7 @@ fn check_that_maps_match(
             }
         })
         .expect("expected state to match");
-    
+
     info!("New state map matches old one");
 }
 

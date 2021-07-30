@@ -374,16 +374,16 @@ fn get_initial_data_from_db(
                 &row.get::<_, String>(3),
                 row.get::<_, String>(4).into(),
             );
-        }
 
-        // update work_done and print debug info if needed
-        work_done += 1;
-        if work_done > work_to_tick {
-            work_to_tick *= 10;
-            debug!("{} groups loaded", work_done);
+            // update work_done and print debug info if needed
+            work_done += 1;
+            if work_done >= work_to_tick {
+                work_to_tick *= 10;
+                debug!("{} rows loaded", work_done);
+            }
         }
     }
-    debug!("{} groups loaded", work_done);
+    debug!("{} rows loaded", work_done);
 
     state_group_map
 }

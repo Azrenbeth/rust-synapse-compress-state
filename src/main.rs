@@ -31,6 +31,6 @@ fn main() {
     } else {
         env_logger::Builder::from_env("COMPRESSOR_LOG_LEVEL").init();
     }
-    
+
     comp_state::run(comp_state::Config::parse_arguments());
 }

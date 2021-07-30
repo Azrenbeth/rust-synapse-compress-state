@@ -224,17 +224,25 @@ pub fn compress_largest_rooms(
             first_pass = false;
         }
 
-        let work_done = compress_chunk_of_largest_room(db_url, chunk_size, default_levels, &mut rooms_to_compress);
-        
+        let work_done = compress_chunk_of_largest_room(
+            db_url,
+            chunk_size,
+            default_levels,
+            &mut rooms_to_compress,
+        );
+
         if let Some(ref chunk_stats) = work_done {
             if chunk_stats.commited {
-                rows_saved +=  chunk_stats.original_num_rows - chunk_stats.new_num_rows;
+                rows_saved += chunk_stats.original_num_rows - chunk_stats.new_num_rows;
             } else {
                 skipped_chunks += 1;
             }
             chunks_processed += 1;
         } else {
-            info!("Finished compressing room. Saved {} rows. Skipped {}/{} chunks", rows_saved, skipped_chunks, chunks_processed);
+            info!(
+                "Finished compressing room. Saved {} rows. Skipped {}/{} chunks",
+                rows_saved, skipped_chunks, chunks_processed
+            );
             first_pass = true;
         }
     }
