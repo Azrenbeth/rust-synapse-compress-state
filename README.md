@@ -383,3 +383,24 @@ By default it tries to connect to a postgres server running on port 5432. If you
 database to use a different port then the URL will take the following form:
 
 `postgresql://synapse_user:synapse_password@mydomain:PORT/synapse`
+
+## Printing debugging logs
+
+The amount of output the tools produce can be altered by setting the COMPRESSOR_LOG_LEVEL 
+environment variable to something. 
+
+To get more logs when running the auto_compressor tool try the following:
+
+```
+$ COMPRESSOR_LOG_LEVEL=debug auto_compressor auto_compressor -p postgresql://user:pass@localhost/synapse -c 5 -l '100,50,25' -n 5000
+```
+
+If you want to suppress all the debugging info you are getting from the 
+postgres client then try:
+
+```
+COMPRESSOR_LOG_LEVEL=auto_compressor=debug,synapse_compress_state=debug auto_compressor [etc.]
+```
+
+This will only print the debugging information from those two packages. For more info see 
+https://docs.rs/env_logger/0.9.0/env_logger/
