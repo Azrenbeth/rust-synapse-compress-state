@@ -23,14 +23,23 @@ use std::{env, str::FromStr};
 
 /// Execution starts here
 fn main() {
+    // setup the logger for the auto_compressor
+    // The default can be overwritten with COMPRESSOR_LOG_LEVEL
+    // see the README for more information
     if env::var("COMPRESSOR_LOG_LEVEL").is_err() {
         let mut log_builder = env_logger::builder();
+        // Only output errors from the synapse_compress state library
         log_builder.filter_module("synapse_compress_state", LevelFilter::Error);
+        // Output log levels info and above from auto_compressor
         log_builder.filter_module("auto_compressor", LevelFilter::Info);
         log_builder.init();
     } else {
+        // If COMPRESSOR_LOG_LEVEL was set then use that
         env_logger::Builder::from_env("COMPRESSOR_LOG_LEVEL").init();
     }
+    // Announce the start of the program to the logs
+    log::info!("auto_compressor started");
+
     // parse the command line arguments using the clap crate
     let arguments = App::new(crate_name!())
         .version(crate_version!())
@@ -120,6 +129,8 @@ fn main() {
 
     // call compress_largest_rooms with the arguments supplied
     manager::compress_largest_rooms(db_url, chunk_size, &default_levels.0, number_of_rooms);
+
+    log::info!("auto_compressor finished");
 }
 
 /// Helper struct for parsing the `default_levels` argument.

@@ -349,17 +349,27 @@ fn functions_are_self_consistent() {
 }
 
 pub fn setup_logger() {
+    // setup the logger for the auto_compressor
+    // The default can be overwritten with COMPRESSOR_LOG_LEVEL
+    // see the README for more information
     if env::var("COMPRESSOR_LOG_LEVEL").is_err() {
         let mut log_builder = env_logger::builder();
+        // set is_test(true) so that the output is hidden by cargo test (unless the test fails)
         log_builder.is_test(true);
+        // default to printing the debug information for both packages being tested
+        // (Note that just setting the global level to debug will log every sql transaction)
         log_builder.filter_module("synapse_compress_state", LevelFilter::Debug);
         log_builder.filter_module("auto_compressor", LevelFilter::Debug);
+        // use try_init() incase the logger has been setup by some previous test
         if log_builder.try_init().is_err() {
             return;
         };
     } else {
+         // If COMPRESSOR_LOG_LEVEL was set then use that
         let mut log_builder = env_logger::Builder::from_env("COMPRESSOR_LOG_LEVEL");
+        // set is_test(true) so that the output is hidden by cargo test (unless the test fails)
         log_builder.is_test(true);
+        // use try_init() incase the logger has been setup by some previous test
         if log_builder.try_init().is_err() {
             return;
         }
