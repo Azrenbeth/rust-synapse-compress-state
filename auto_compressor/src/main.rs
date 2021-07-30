@@ -19,15 +19,21 @@
 use auto_compressor::{manager, state_saving, LevelState};
 use clap::{crate_authors, crate_description, crate_name, crate_version, value_t, App, Arg};
 use log::LevelFilter;
-use std::{env, str::FromStr};
+use std::{env, fs::OpenOptions, str::FromStr};
 
 /// Execution starts here
 fn main() {
     // setup the logger for the auto_compressor
     // The default can be overwritten with COMPRESSOR_LOG_LEVEL
     // see the README for more information
+    let log_file = OpenOptions::new()
+        .append(true)
+        .create(true)
+        .open("auto_compressor.log")
+        .unwrap_or_else(|e| panic!("Error occured while opening the log file: {}", e));
     if env::var("COMPRESSOR_LOG_LEVEL").is_err() {
         let mut log_builder = env_logger::builder();
+        log_builder.target(env_logger::Target::Pipe(Box::new(log_file)));
         // Only output errors from the synapse_compress state library
         log_builder.filter_module("synapse_compress_state", LevelFilter::Error);
         // Output log levels info and above from auto_compressor
