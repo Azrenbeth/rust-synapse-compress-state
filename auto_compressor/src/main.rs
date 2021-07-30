@@ -104,7 +104,7 @@ fn main() {
 
     // The default structure to use when compressing
     let default_levels =
-        value_t!(arguments, "default_levels", LevelInfo).unwrap_or_else(|e| panic!("{}", e));
+        value_t!(arguments, "default_levels", LevelInfo).unwrap_or_else(|e| panic!("Unable to parse default levels: {}", e));
 
     // The number of rooms to compress with this tool
     let number_of_rooms = arguments
