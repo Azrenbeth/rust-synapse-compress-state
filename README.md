@@ -122,6 +122,9 @@ which stores the most recently compressed state group for each room.
 The tool can be run manually when you are running out of space, or be scheduled to run
 periodically
 
+The outupt from the auto_compressor will be sent to `auto_compressor.log` (in the directory
+that the compressor is run from)
+
 ## Building 
 
 This tool requires `cargo` to be installed. See https://www.rust-lang.org/tools/install
@@ -167,6 +170,9 @@ Create the following script and save it somewhere sensible
 
 ```
 #!/bin/bash
+
+cd /home/synapse/rust-synapse-compress-state/
+
 URL=postgresql://user::pass@domain.com/synapse
 CHUNK_SIZE=5000
 LEVELS="100,50,25"
