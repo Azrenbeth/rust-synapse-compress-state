@@ -361,17 +361,13 @@ pub fn setup_logger() {
         log_builder.filter_module("synapse_compress_state", LevelFilter::Debug);
         log_builder.filter_module("auto_compressor", LevelFilter::Debug);
         // use try_init() incase the logger has been setup by some previous test
-        if log_builder.try_init().is_err() {
-            return;
-        };
+        let _ = log_builder.try_init();
     } else {
-         // If COMPRESSOR_LOG_LEVEL was set then use that
+        // If COMPRESSOR_LOG_LEVEL was set then use that
         let mut log_builder = env_logger::Builder::from_env("COMPRESSOR_LOG_LEVEL");
         // set is_test(true) so that the output is hidden by cargo test (unless the test fails)
         log_builder.is_test(true);
         // use try_init() incase the logger has been setup by some previous test
-        if log_builder.try_init().is_err() {
-            return;
-        }
+        let _ = log_builder.try_init();
     }
 }
