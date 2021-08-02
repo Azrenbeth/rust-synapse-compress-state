@@ -31,6 +31,7 @@ fn main() {
         .create(true)
         .open("auto_compressor.log")
         .unwrap_or_else(|e| panic!("Error occured while opening the log file: {}", e));
+
     if env::var("COMPRESSOR_LOG_LEVEL").is_err() {
         let mut log_builder = env_logger::builder();
         log_builder.target(env_logger::Target::Pipe(Box::new(log_file)));
@@ -41,7 +42,9 @@ fn main() {
         log_builder.init();
     } else {
         // If COMPRESSOR_LOG_LEVEL was set then use that
-        env_logger::Builder::from_env("COMPRESSOR_LOG_LEVEL").init();
+        let mut log_builder = env_logger::Builder::from_env("COMPRESSOR_LOG_LEVEL");
+        log_builder.target(env_logger::Target::Pipe(Box::new(log_file)));
+        log_builder.init();
     }
     // Announce the start of the program to the logs
     log::info!("auto_compressor started");
