@@ -8,9 +8,11 @@
 
 use std::str::FromStr;
 
+use log::LevelFilter;
 use pyo3::{
     exceptions::PyRuntimeError, prelude::pymodule, types::PyModule, PyErr, PyResult, Python,
 };
+use pyo3_log::Logger;
 
 pub mod manager;
 pub mod state_saving;
@@ -58,7 +60,8 @@ impl FromStr for LevelInfo {
 
 // PyO3 INTERFACE STARTS HERE
 #[pymodule]
-fn state_compressor(_py: Python, m: &PyModule) -> PyResult<()> {
+// #[pyo3(name = "state_compressor")]
+fn auto_compressor(_py: Python, m: &PyModule) -> PyResult<()> {
     #[pyfn(m, compress_largest_rooms)]
     fn compress_largest_rooms(
         _py: Python,
@@ -67,6 +70,15 @@ fn state_compressor(_py: Python, m: &PyModule) -> PyResult<()> {
         default_levels: String,
         number_of_rooms: i64,
     ) -> PyResult<()> {
+        let _ = Logger::default()
+            .filter_target("panic".to_owned(), LevelFilter::Error)
+            .filter_target("synapse_compress_state".to_owned(), LevelFilter::Error)
+            .filter_target("auto_compressor".to_owned(), LevelFilter::Info)
+            .install();
+
+        // Announce the start of the program to the logs
+        log::info!("auto_compressor started");
+
         // Parse the default_level string into a LevelInfo struct
         let default_levels: LevelInfo = match default_levels.parse() {
             Ok(l_sizes) => l_sizes,
@@ -87,9 +99,11 @@ fn state_compressor(_py: Python, m: &PyModule) -> PyResult<()> {
         );
 
         if let Err(e) = run_result {
+            log::error!("{}",e);
             return Err(PyErr::new::<PyRuntimeError, _>(e.to_string()));
         }
 
+        log::info!("auto_compressor finished");
         Ok(())
     }
     Ok(())
