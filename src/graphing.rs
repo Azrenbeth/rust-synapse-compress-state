@@ -33,6 +33,6 @@ pub fn make_graphs(before: &Graph, after: &Graph) {
     let mut after_edges_file = File::create("after_edges.csv").unwrap();
     let mut after_nodes_file = File::create("after_nodes.csv").unwrap();
 
-    output_csv(&before, &mut before_edges_file, &mut before_nodes_file);
-    output_csv(&after, &mut after_edges_file, &mut after_nodes_file);
+    output_csv(before, &mut before_edges_file, &mut before_nodes_file);
+    output_csv(after, &mut after_edges_file, &mut after_nodes_file);
 }

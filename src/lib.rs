@@ -330,7 +330,7 @@ pub fn run(mut config: Config) {
     );
 
     if config.graphs {
-        graphing::make_graphs(&state_group_map, &new_state_group_map);
+        graphing::make_graphs(&state_group_map, new_state_group_map);
     }
 
     if ratio > 1.0 {
@@ -349,7 +349,7 @@ pub fn run(mut config: Config) {
         }
     }
 
-    check_that_maps_match(&state_group_map, &new_state_group_map);
+    check_that_maps_match(&state_group_map, new_state_group_map);
 
     // TODO: combine output_sql and send_changes_to_db so that only have the one place
     // where sql is generated! (Have tried but borrow checker wasn't happy with me...)
@@ -359,7 +359,7 @@ pub fn run(mut config: Config) {
     // If we are given an output file, we output the changes as SQL. If the
     // `transactions` argument is set we wrap each change to a state group in a
     // transaction.
-    output_sql(&mut config, &state_group_map, &new_state_group_map);
+    output_sql(&mut config, &state_group_map, new_state_group_map);
 
     // If commit_changes is set then commit the changes to the database
     if config.commit_changes {
@@ -367,7 +367,7 @@ pub fn run(mut config: Config) {
             &config.db_url,
             &config.room_id,
             &state_group_map,
-            &new_state_group_map,
+            new_state_group_map,
         );
     }
 }
@@ -491,7 +491,7 @@ pub fn continue_run(
     // First we need to get the current state groups
     // If nothing was found then return None
     let (state_group_map, max_group_found) =
-        database::reload_data_from_db(&db_url, &room_id, start, Some(chunk_size), level_info)?;
+        database::reload_data_from_db(db_url, room_id, start, Some(chunk_size), level_info)?;
 
     let original_num_rows = state_group_map
         .iter()
@@ -526,9 +526,9 @@ pub fn continue_run(
         });
     }
 
-    check_that_maps_match(&state_group_map, &new_state_group_map);
+    check_that_maps_match(&state_group_map, new_state_group_map);
 
-    database::send_changes_to_db(&db_url, &room_id, &state_group_map, &new_state_group_map);
+    database::send_changes_to_db(db_url, room_id, &state_group_map, new_state_group_map);
 
     Some(ChunkStats {
         new_level_info: compressor.get_level_info(),
@@ -571,8 +571,8 @@ fn check_that_maps_match(
     old_map
         .par_iter() // This uses rayon to run the checks in parallel
         .try_for_each(|(sg, _)| {
-            let expected = collapse_state_maps(&old_map, *sg);
-            let actual = collapse_state_maps(&new_map, *sg);
+            let expected = collapse_state_maps(old_map, *sg);
+            let actual = collapse_state_maps(new_map, *sg);
 
             // pb.inc(1);
 
@@ -607,7 +607,7 @@ fn collapse_state_maps(map: &BTreeMap<i64, StateGroupEntry>, state_group: i64) -
 
     for sg in stack.iter().rev() {
         state_map.extend(
-            map[&sg]
+            map[sg]
                 .state_map
                 .iter()
                 .map(|((t, s), e)| ((t, s), e.clone())),
