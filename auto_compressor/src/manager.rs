@@ -8,6 +8,7 @@ use crate::{
     },
     LevelState,
 };
+use anyhow::{bail, Result};
 use log::{debug, info, warn};
 use synapse_compress_state::{continue_run, ChunkStats};
 
@@ -43,18 +44,22 @@ pub fn run_compressor_on_room_chunk(
     room_id: &str,
     chunk_size: i64,
     default_levels: &[LevelState],
-) -> Option<ChunkStats> {
+) -> Result<Option<ChunkStats>> {
     // connect to the database
-    let mut client = connect_to_database(db_url)
-        .unwrap_or_else(|e| panic!("Error while connecting to {}: {}", db_url, e));
+    let mut client = match connect_to_database(db_url) {
+        Ok(c) => c,
+        Err(e) => bail!("Error while connecting to {}: {}", db_url, e),
+    };
 
     // Access the database to find out where the compressor last got up to
-    let retrieved_state = read_room_compressor_state(&mut client, room_id).unwrap_or_else(|e| {
-        panic!(
-            "Unable to read compressor state for room {}: {}",
-            room_id, e
-        )
-    });
+    let retrieved_state = match read_room_compressor_state(&mut client, room_id) {
+        Ok(s) => s,
+        Err(e) => bail!(
+            "Error while reading compressor state for room {}: {}",
+            room_id,
+            e
+        ),
+    };
 
     // If the database didn't contain any information, then use the default state
     let (start, level_info) = match retrieved_state {
@@ -67,9 +72,10 @@ pub fn run_compressor_on_room_chunk(
 
     if option_chunk_stats.is_none() {
         debug!("No work to do on this room...");
-        return None;
+        return Ok(None);
     }
 
+    // Ok to unwrap because have checked that it's not none
     let chunk_stats = option_chunk_stats.unwrap();
 
     debug!("{:?}", chunk_stats);
@@ -82,37 +88,45 @@ pub fn run_compressor_on_room_chunk(
         );
 
         // Skip over the failed chunk and set the level info to the default (empty) state
-        write_room_compressor_state(
+        let write_result = write_room_compressor_state(
             &mut client,
             room_id,
-            &default_levels,
+            default_levels,
             chunk_stats.last_compressed_group,
-        )
-        .unwrap_or_else(|e| {
-            panic!(
-                "Error when skipping chunk in room {} between {:?} and {}: {}",
-                room_id, start, chunk_stats.last_compressed_group, e,
-            )
-        });
+        );
 
-        return Some(chunk_stats);
+        if let Err(e) = write_result {
+            bail!(
+                "Error when skipping chunk in room {} between {:?} and {}: {}",
+                room_id,
+                start,
+                chunk_stats.last_compressed_group,
+                e,
+            )
+        }
+
+        return Ok(Some(chunk_stats));
     }
 
     // Save where we got up to after this successful commit
-    write_room_compressor_state(
+    let write_result = write_room_compressor_state(
         &mut client,
         room_id,
         &chunk_stats.new_level_info,
         chunk_stats.last_compressed_group,
-    )
-    .unwrap_or_else(|e| {
-        panic!(
-            "Error when saving state after compressing chunk in room {} between {:?} and {}: {}",
-            room_id, start, chunk_stats.last_compressed_group, e,
-        )
-    });
+    );
 
-    Some(chunk_stats)
+    if let Err(e) = write_result {
+        bail!(
+            "Error when saving state after compressing chunk in room {} between {:?} and {}: {}",
+            room_id,
+            start,
+            chunk_stats.last_compressed_group,
+            e,
+        )
+    }
+
+    Ok(Some(chunk_stats))
 }
 
 /// Compresses a chunk of the 1st room in the rooms_to_compress argument given
@@ -145,11 +159,12 @@ fn compress_chunk_of_largest_room(
     chunk_size: i64,
     default_levels: &[LevelState],
     rooms_to_compress: &mut Vec<(String, i64)>,
-) -> Option<ChunkStats> {
+) -> Result<Option<ChunkStats>> {
     if rooms_to_compress.is_empty() {
-        panic!("Called compress_chunk_of_largest_room with empty rooms_to_compress argument");
+        bail!("Called compress_chunk_of_largest_room with empty rooms_to_compress argument");
     }
 
+    // can call unwrap safely as have checked that rooms_to_compress is not empty
     let (room_id, _) = rooms_to_compress.get(0).unwrap().clone();
 
     debug!(
@@ -157,13 +172,13 @@ fn compress_chunk_of_largest_room(
         room_id, chunk_size
     );
 
-    let work_done = run_compressor_on_room_chunk(db_url, &room_id, chunk_size, default_levels);
+    let work_done = run_compressor_on_room_chunk(db_url, &room_id, chunk_size, default_levels)?;
 
     if work_done.is_none() {
         rooms_to_compress.remove(0);
     }
 
-    work_done
+    Ok(work_done)
 }
 
 /// Runs the compressor (in chunks) on the rooms with the most uncompressed state
@@ -194,23 +209,26 @@ pub fn compress_largest_rooms(
     chunk_size: i64,
     default_levels: &[LevelState],
     number: i64,
-) {
+) -> Result<()> {
     // connect to the database
-    let mut client = connect_to_database(db_url)
-        .unwrap_or_else(|e| panic!("Error while connecting to {}: {}", db_url, e));
+    let mut client = match connect_to_database(db_url) {
+        Ok(c) => c,
+        Err(e) => bail!("Error while connecting to {}: {}", db_url, e),
+    };
 
-    let rooms_to_compress = get_rooms_with_most_rows_to_compress(&mut client, number)
-        .unwrap_or_else(|e| {
-            panic!(
-                "Error while trying to work out what room to compress next: {}",
-                e
-            )
-        });
+    let rooms_to_compress = match get_rooms_with_most_rows_to_compress(&mut client, number) {
+        Ok(r) => r,
+        Err(e) => bail!(
+            "Error while trying to work out what room to compress next: {}",
+            e
+        ),
+    };
 
     if rooms_to_compress.is_none() {
-        return;
+        return Ok(());
     }
 
+    // can unwrap safely as have checked is not none
     let mut rooms_to_compress = rooms_to_compress.unwrap();
 
     let mut skipped_chunks = 0;
@@ -220,6 +238,7 @@ pub fn compress_largest_rooms(
 
     while !rooms_to_compress.is_empty() {
         if first_pass {
+            // can unwrap as have checked rooms_to_compress is not empty
             info!("Compressing: {}", rooms_to_compress.get(0).unwrap().0);
             first_pass = false;
         }
@@ -229,7 +248,7 @@ pub fn compress_largest_rooms(
             chunk_size,
             default_levels,
             &mut rooms_to_compress,
-        );
+        )?;
 
         if let Some(ref chunk_stats) = work_done {
             if chunk_stats.commited {
@@ -246,4 +265,5 @@ pub fn compress_largest_rooms(
             first_pass = true;
         }
     }
+    Ok(())
 }

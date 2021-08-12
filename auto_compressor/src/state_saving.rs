@@ -1,11 +1,12 @@
 // This module contains functions to communicate with the database
 
+use anyhow::{bail, Result};
 use core::fmt;
 use rand::{distributions::Alphanumeric, thread_rng, Rng};
 use std::borrow::Cow;
 
 use openssl::ssl::{SslConnector, SslMethod, SslVerifyMode};
-use postgres::{fallible_iterator::FallibleIterator, Client, Error};
+use postgres::{fallible_iterator::FallibleIterator, Client};
 use postgres_openssl::MakeTlsConnector;
 
 use crate::LevelState;
@@ -16,12 +17,13 @@ use crate::LevelState;
 ///
 /// * `db_url`          -   The URL of the postgres database that synapse is using.
 ///                         e.g. "postgresql://user:password@domain.com/synapse"
-pub fn connect_to_database(db_url: &str) -> Result<Client, Error> {
-    let mut builder = SslConnector::builder(SslMethod::tls()).unwrap();
+pub fn connect_to_database(db_url: &str) -> Result<Client> {
+    let mut builder = SslConnector::builder(SslMethod::tls())?;
     builder.set_verify(SslVerifyMode::NONE);
     let connector = MakeTlsConnector::new(builder.build());
 
-    Client::connect(db_url, connector)
+    let client = Client::connect(db_url, connector)?;
+    Ok(client)
 }
 
 /// Creates the state_compressor_state and state_compressor progress tables
@@ -31,7 +33,7 @@ pub fn connect_to_database(db_url: &str) -> Result<Client, Error> {
 /// # Arguments
 ///
 /// * `client`        - A postgres client used to send the requests to the database
-pub fn create_tables_if_needed(client: &mut Client) -> Result<u64, Error> {
+pub fn create_tables_if_needed(client: &mut Client) -> Result<()> {
     let create_state_table = r#"
         CREATE TABLE IF NOT EXISTS state_compressor_state (
             room_id TEXT NOT NULL,
@@ -49,7 +51,8 @@ pub fn create_tables_if_needed(client: &mut Client) -> Result<u64, Error> {
             last_compressed BIGINT NOT NULL
         )"#;
 
-    client.execute(create_progress_table, &[])
+    client.execute(create_progress_table, &[])?;
+    Ok(())
 }
 
 /// Retrieve the level info so we can restart the compressor
@@ -61,7 +64,7 @@ pub fn create_tables_if_needed(client: &mut Client) -> Result<u64, Error> {
 pub fn read_room_compressor_state(
     client: &mut Client,
     room_id: &str,
-) -> Result<Option<(i64, Vec<LevelState>)>, Error> {
+) -> Result<Option<(i64, Vec<LevelState>)>> {
     // Query to retrieve all levels from state_compressor_state
     // Ordered by ascending level_number
     let sql = r#"
@@ -95,9 +98,10 @@ pub fn read_room_compressor_state(
         // Check that there aren't multiple entries for the same level number
         // in the database.
         if prev_seen == level_num {
-            panic!(
+            bail!(
                 "The level {} occurs twice in state_compressor_state for room {}",
-                level_num, room_id,
+                level_num,
+                room_id,
             );
         }
 
@@ -106,22 +110,27 @@ pub fn read_room_compressor_state(
         // row is for level 3 then since the SQL query orders the results
         // in ascenting level numbers, there was no level 2 found!
         if prev_seen != level_num - 1 {
-            panic!("Levels between {} and {} are missing", prev_seen, level_num,);
+            bail!("Levels between {} and {} are missing", prev_seen, level_num,);
         }
 
         // if the level is not empty, then it must have a head!
         if current_head.is_none() && current_length != 0 {
-            panic!(
+            bail!(
                 "Level {} has no head but current length is {} in room {}",
-                level_num, current_length, room_id,
-            )
+                level_num,
+                current_length,
+                room_id,
+            );
         }
 
         // If the level has more groups in than the maximum then something is wrong!
         if current_length > max_size {
-            panic!(
+            bail!(
                 "Level {} has length {} but max size {} in room {}",
-                level_num, current_length, max_size, room_id,
+                level_num,
+                current_length,
+                max_size,
+                room_id,
             );
         }
 
@@ -155,7 +164,7 @@ pub fn write_room_compressor_state(
     room_id: &str,
     level_info: &[LevelState],
     last_compressed: i64,
-) -> Result<(), Error> {
+) -> Result<()> {
     // The query we are going to build up
     let mut sql = "".to_string();
 
@@ -253,7 +262,7 @@ impl<'a> fmt::Display for PGEscape<'a> {
 pub fn get_rooms_with_most_rows_to_compress(
     client: &mut Client,
     number: i64,
-) -> Result<Option<Vec<(String, i64)>>, Error> {
+) -> Result<Option<Vec<(String, i64)>>> {
     let get_biggest_rooms = r#"
         SELECT s.room_id, count(*) AS num_rows
         FROM state_groups_state AS s

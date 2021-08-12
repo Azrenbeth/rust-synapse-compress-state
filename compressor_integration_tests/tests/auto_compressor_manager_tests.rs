@@ -46,11 +46,11 @@ fn run_compressor_on_room_chunk_works() {
     // 0  3\
     // 1  4 6
     // 2  5
-    run_compressor_on_room_chunk(DB_URL, "room1", 7, &default_levels);
+    run_compressor_on_room_chunk(DB_URL, "room1", 7, &default_levels).unwrap();
 
     // compress the next 7 groups
 
-    run_compressor_on_room_chunk(DB_URL, "room1", 7, &default_levels);
+    run_compressor_on_room_chunk(DB_URL, "room1", 7, &default_levels).unwrap();
 
     // This should have created the following structure in the database
     // i.e. groups 6 and 9 should have changed from before
@@ -98,7 +98,7 @@ fn compress_largest_rooms_compresses_multiple_rooms() {
 
     // compress the largest 10 rooms in chunks of size 7
     // (Note only 2 rooms should exist in the database, but this should not panic)
-    compress_largest_rooms(DB_URL, 7, &default_levels, 10);
+    compress_largest_rooms(DB_URL, 7, &default_levels, 10).unwrap();
 
     // We are aiming for the following structure in the database for room1
     // i.e. groups 6 and 9 should have changed from initial map
@@ -178,7 +178,7 @@ fn compress_largest_rooms_does_largest_rooms() {
 
     // compress the largest 1 rooms in chunks of size 7
     // (Note this should ONLY compress room2 since it has more state)
-    compress_largest_rooms(DB_URL, 7, &default_levels, 1);
+    compress_largest_rooms(DB_URL, 7, &default_levels, 1).unwrap();
 
     // We are aiming for the following structure in the database for room2
     // i.e. groups 20 and 23 should have changed from initial map
@@ -263,7 +263,7 @@ fn compress_largest_rooms_skips_already_compressed_when_rerun() {
 
     // compress the largest 1 rooms in chunks of size 7
     // (Note this should ONLY compress room1 since it has more state)
-    compress_largest_rooms(DB_URL, 7, &default_levels, 1);
+    compress_largest_rooms(DB_URL, 7, &default_levels, 1).unwrap();
 
     // This should have created the following structure in the database
     // i.e. groups 6 and 9 should have changed from before
@@ -339,7 +339,7 @@ fn compress_largest_rooms_skips_already_compressed_when_rerun() {
 
     // compress the largest 1 rooms in chunks of size 7
     // (Note this should ONLY compress room2 since room1 only has 2 uncompressed state groups)
-    compress_largest_rooms(DB_URL, 7, &default_levels, 1);
+    compress_largest_rooms(DB_URL, 7, &default_levels, 1).unwrap();
 
     // Check that the database still gives correct states for each group in room1
     assert!(database_collapsed_states_match_map(

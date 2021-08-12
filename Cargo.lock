@@ -21,6 +21,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "anyhow"
+version = "1.0.42"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "595d3cfa7a60d4555cb5067b99f07142a08ea778de5cf993f7b75c7d8fabc486"
+
+[[package]]
 name = "async-trait"
 version = "0.1.50"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -46,12 +52,15 @@ dependencies = [
 name = "auto_compressor"
 version = "0.1.0"
 dependencies = [
+ "anyhow",
  "clap",
  "env_logger 0.9.0 (git+https://github.com/TilCreator/env_logger?branch=fix_pipe)",
  "log",
+ "log-panics",
  "openssl",
  "postgres",
  "postgres-openssl",
+ "pyo3",
  "rand",
  "serial_test",
  "synapse_compress_state",
@@ -522,6 +531,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "51b9bbe6c47d51fc3e1a9b945965946b4c44142ab8792c50835a980d362c2710"
 dependencies = [
  "cfg-if",
+]
+
+[[package]]
+name = "log-panics"
+version = "2.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ae0136257df209261daa18d6c16394757c63e032e27aafd8b07788b051082bef"
+dependencies = [
+ "log",
 ]
 
 [[package]]

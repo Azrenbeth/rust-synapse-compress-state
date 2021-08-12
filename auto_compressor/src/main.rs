@@ -16,10 +16,10 @@
 //! the state_compressor_state table so that the compressor can seemlesly
 //! continue from where it left off.
 
-use auto_compressor::{manager, state_saving, LevelState};
+use auto_compressor::{manager, state_saving, LevelInfo};
 use clap::{crate_authors, crate_description, crate_name, crate_version, value_t, App, Arg};
 use log::LevelFilter;
-use std::{env, fs::OpenOptions, str::FromStr};
+use std::{env, fs::OpenOptions};
 
 /// Execution starts here
 fn main() {
@@ -35,6 +35,8 @@ fn main() {
     if env::var("COMPRESSOR_LOG_LEVEL").is_err() {
         let mut log_builder = env_logger::builder();
         log_builder.target(env_logger::Target::Pipe(Box::new(log_file)));
+        // Ensure panics still come through
+        log_builder.filter_module("panic", LevelFilter::Error);
         // Only output errors from the synapse_compress state library
         log_builder.filter_module("synapse_compress_state", LevelFilter::Error);
         // Output log levels info and above from auto_compressor
@@ -44,8 +46,11 @@ fn main() {
         // If COMPRESSOR_LOG_LEVEL was set then use that
         let mut log_builder = env_logger::Builder::from_env("COMPRESSOR_LOG_LEVEL");
         log_builder.target(env_logger::Target::Pipe(Box::new(log_file)));
+        // Ensure panics still come through
+        log_builder.filter_module("panic", LevelFilter::Error);
         log_builder.init();
     }
+    log_panics::init();
     // Announce the start of the program to the logs
     log::info!("auto_compressor started");
 
@@ -132,44 +137,14 @@ fn main() {
     // Connect to the database and create the 2 tables this tool needs
     // (Note: if they already exist then this does nothing)
     let mut client = state_saving::connect_to_database(db_url)
-        .unwrap_or_else(|e| panic!("Error occured while connection to {}: {}", db_url, e));
+        .unwrap_or_else(|e| panic!("Error occured while connecting to {}: {}", db_url, e));
     state_saving::create_tables_if_needed(&mut client)
         .unwrap_or_else(|e| panic!("Error occured while creating tables in database: {}", e));
 
     // call compress_largest_rooms with the arguments supplied
-    manager::compress_largest_rooms(db_url, chunk_size, &default_levels.0, number_of_rooms);
+    // panic if an error is produced
+    manager::compress_largest_rooms(db_url, chunk_size, &default_levels.0, number_of_rooms)
+        .unwrap();
 
     log::info!("auto_compressor finished");
-}
-
-/// Helper struct for parsing the `default_levels` argument.
-// This is needed since FromStr cannot be implemented for structs
-// that aren't defined in this scope
-#[derive(PartialEq, Debug)]
-struct LevelInfo(Vec<LevelState>);
-
-// Implement FromStr so that an argument of the form "100,50,25"
-// can be used to create LevelInfo<vec!((100,0,None),(50,0,None),(25,0,None))>
-// For more info see the LevelState documentation in lib.rs
-impl FromStr for LevelInfo {
-    type Err = &'static str;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        // Stores the max sizes of each level
-        let mut level_info: Vec<LevelState> = Vec::new();
-
-        // Split the string up at each comma
-        for size_str in s.split(',') {
-            // try and convert each section into a number
-            // panic if that fails
-            let size: usize = size_str
-                .parse()
-                .map_err(|_| "Not a comma separated list of numbers")?;
-            // add this parsed number to the sizes struct
-            level_info.push((size, 0, None));
-        }
-
-        // Return the built up vector inside a LevelInfo struct
-        Ok(LevelInfo(level_info))
-    }
 }
