@@ -137,7 +137,7 @@ This will create an executable and store it in `auto_compressor/target/debug/aut
 
 ## Example usage
 ```
-$ auto_compressor -p postgresql://user:pass@localhost/synapse -c 5 -l '100,50,25' -n 5000
+$ auto_compressor -p postgresql://user:pass@localhost/synapse -c 5000 -l '100,50,25' -n 10
 ```
 ## Running Options
 
@@ -193,6 +193,36 @@ Then run `crontab -e` to edit your scheduled tasks and add the following:
 # Run every day at 3:00am
 00 3 * * * /home/synapse/compress.sh
 ```
+
+## Using as python library
+
+The compressor can also be built into a python library as it uses PyO3. It can be
+built and installed into the current virtual environment by running `maturin develop`:
+
+1. Create a virtual environment in the place you want to use the compressor from  
+`$ virtualenv -p python3 venv`
+
+2. Activate the virtual environment  
+`$ source venv/bin/activate`
+
+3. Build and install the library  
+`$ cd /home/synapse/rust-synapse-compress-state/auto_compressor`  
+`$ pip install maturin`  
+`$ maturin develop`
+
+The following code does exactly the same as the command-line example from above:
+
+```python
+import auto_compressor as comp
+
+comp.compress_largest_rooms(
+  db_url="postgresql://localhost/synapse",
+  chunk_size=5000,
+  default_levels="100,50,25",
+  number_of_rooms=10
+)
+```
+
 # Manual tool: synapse_compress_state
 
 ## Introduction
@@ -297,26 +327,31 @@ at in something like Gephi (https://gephi.org)
 The compressor can also be built into a python library as it uses PyO3. It can be
 built and installed into the current virtual environment by running `maturin develop`:
 
-```
-$ virtualenv -p python3 venv
-$ source venv/bin/activate
-$ pip install maturin
-$ maturin develop
-```
+1. Create a virtual environment in the place you want to use the compressor from  
+`$ virtualenv -p python3 venv`
+
+2. Activate the virtual environment  
+`$ source venv/bin/activate`
+
+3. Build and install the library  
+`$ cd /home/synapse/rust-synapse-compress-state`  
+`$ pip install maturin`  
+`$ maturin develop`
+
 
 All the same running options are available, see the comments in the Config struct
-in lib.rs for the names of each argument (N.B. Python expects them all to be 
-passed as strings or booleans). All arguments other than `db_url` and `room_id`
+in lib.rs for the names of each argument. All arguments other than `db_url` and `room_id`
 are optional.
 
 The following code does exactly the same as the command-line example from above:
-```
+
+```python
 import synapse_compress_state as comp
 
 comp.run_compression(
   db_url="postgresql://localhost/synapse",
   room_id="!some_room:example.com",
-  output_file="out.sql",
+  output_file=Some("out.sql"),
   transactions=True
 )
 ```
