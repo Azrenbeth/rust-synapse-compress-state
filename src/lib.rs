@@ -23,9 +23,6 @@
 use log::{info, warn};
 use pyo3::prelude::*;
 
-#[global_allocator]
-static GLOBAL: jemallocator::Jemalloc = jemallocator::Jemalloc;
-
 use clap::{
     crate_authors, crate_description, crate_name, crate_version, value_t_or_exit, App, Arg,
 };

@@ -16,6 +16,9 @@
 //! the state_compressor_state table so that the compressor can seemlesly
 //! continue from where it left off.
 
+#[global_allocator]
+static GLOBAL: jemallocator::Jemalloc = jemallocator::Jemalloc;
+
 use auto_compressor::{manager, state_saving, LevelInfo};
 use clap::{crate_authors, crate_description, crate_name, crate_version, value_t, App, Arg};
 use log::LevelFilter;

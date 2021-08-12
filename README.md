@@ -321,15 +321,6 @@ comp.run_compression(
 )
 ```
 
-Note: since this library uses Jemalloc, you might get an error of the form:
-```
-ImportError: /[LONG_PATH]/synapse_compress_state.abi3.so: cannot allocate memory in static TLS block
-```
-If this happens then try running the following:
-```
-LD_PATH=/[LONG_PATH]/synapse_compress_state.abi3.so ./my_python_script
-```
-
 # Running tests
 
 There are integration tests for these tool stored in `compressor_integration_tests/`
@@ -344,6 +335,11 @@ $ docker-compose up -d
 $ cargo test --all
 $ docker-compose down
 ```
+
+# Using the synapse_compress_state library
+
+If you want to use the compressor in another project, it is reccomended 
+that you use jemalloc `https://github.com/gnzlbg/jemallocator` 
 
 # Troubleshooting
 
