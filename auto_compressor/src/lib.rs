@@ -73,14 +73,14 @@ fn auto_compressor(_py: Python, m: &PyModule) -> PyResult<()> {
         let _ = Logger::default()
             // don't send out anything lower than a warning from other crates
             .filter(LevelFilter::Warn)
-            // log all panics
-            .filter_target("panic".to_owned(), LevelFilter::Error)
-            // log only errors from the compressor library
+            // don't log warnings from synapse_compress_state, the auto_compressor handles these
+            // situations and provides better log messages
             .filter_target("synapse_compress_state".to_owned(), LevelFilter::Error)
             // log info and above for the auto_compressor
             .filter_target("auto_compressor".to_owned(), LevelFilter::Info)
             .install();
-
+        // ensure any panics produce error messages in the log
+        log_panics::init();
         // Announce the start of the program to the logs
         log::info!("auto_compressor started");
 
