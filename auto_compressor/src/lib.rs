@@ -104,7 +104,7 @@ fn auto_compressor(_py: Python, m: &PyModule) -> PyResult<()> {
         );
 
         if let Err(e) = run_result {
-            log::error!("{}",e);
+            log::error!("{}", e);
             return Err(PyErr::new::<PyRuntimeError, _>(e.to_string()));
         }
 
