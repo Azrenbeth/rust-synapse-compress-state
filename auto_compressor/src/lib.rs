@@ -104,7 +104,7 @@ fn auto_compressor(_py: Python, m: &PyModule) -> PyResult<()> {
             // situations and provides better log messages
             .filter_target("synapse_compress_state".to_owned(), LevelFilter::Error)
             // log info and above for the auto_compressor
-            .filter_target("auto_compressor".to_owned(), LevelFilter::Info)
+            .filter_target("auto_compressor".to_owned(), LevelFilter::Debug)
             .install();
         // ensure any panics produce error messages in the log
         log_panics::init();
