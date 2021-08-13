@@ -8,13 +8,10 @@
 
 use std::str::FromStr;
 
-use anyhow::{bail, Result};
+use anyhow::Result;
 use log::{error, LevelFilter};
 use pyo3::{
-    exceptions::{PyRuntimeError, PyTypeError},
-    prelude::pymodule,
-    types::{PyDict, PyModule},
-    PyErr, PyResult, Python,
+    exceptions::PyRuntimeError, prelude::pymodule, types::PyModule, PyErr, PyResult, Python,
 };
 use pyo3_log::Logger;
 
@@ -66,38 +63,7 @@ impl FromStr for LevelInfo {
 #[pymodule]
 // #[pyo3(name = "state_compressor")]
 fn auto_compressor(_py: Python, m: &PyModule) -> PyResult<()> {
-    // fn parse_kwargs(kwargs: Option<&PyDict>) -> Result<(String, i64, String, i64)> {
-    //     if kwargs.is_none() {
-    //         bail!("No arguments provided")
-    //     }
-    //     let kwargs = kwargs.unwrap();
-
-    //     let db_url: String = match kwargs.get_item("db_url") {
-    //         Some(url) => url.extract()?,
-    //         None => bail!("Missing required argument: `db_url`"),
-    //     };
-
-    //     let chunk_size: i64 = match kwargs.get_item("chunk_size") {
-    //         Some(size) => size.extract()?,
-    //         None => bail!("Missing required argument: `chunk_size`"),
-    //     };
-
-    //     let default_levels: String = match kwargs.get_item("default_levels") {
-    //         Some(defaults) => defaults.extract()?,
-    //         None => bail!("Missing required argument: `default_levels`"),
-    //     };
-
-    //     let number_of_rooms: i64 = match kwargs.get_item("number_of_rooms") {
-    //         Some(number) => number.extract()?,
-    //         None => bail!("Missing required argument `number_of_rooms`"),
-    //     };
-
-    //     Ok((db_url, chunk_size, default_levels, number_of_rooms))
-    // }
-
-    // #[pyfn(m, compress_largest_rooms, kwargs = "**")]
     #[pyfn(m, compress_largest_rooms)]
-    // fn compress_largest_rooms(_py: Python, kwargs: Option<&PyDict>) -> PyResult<()> {
     fn compress_largest_rooms(
         db_url: String,
         chunk_size: i64,
@@ -117,16 +83,6 @@ fn auto_compressor(_py: Python, m: &PyModule) -> PyResult<()> {
         log_panics::init();
         // Announce the start of the program to the logs
         log::info!("auto_compressor started");
-
-        // let (db_url, chunk_size, default_levels, number_of_rooms) = match parse_kwargs(kwargs) {
-        //     Ok(args) => args,
-        //     Err(e) => {
-        //         return Err(PyErr::new::<PyTypeError, _>(format!(
-        //             "Error parsing arguments provided to `compress_largest_rooms` : {}",
-        //             e
-        //         )))
-        //     }
-        // };
 
         // Parse the default_level string into a LevelInfo struct
         let default_levels: LevelInfo = match default_levels.parse() {
