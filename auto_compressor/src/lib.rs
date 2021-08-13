@@ -6,7 +6,7 @@
 //! to the database and uses these to enable it to incrementally work
 //! on space reductions
 
-use std::str::FromStr;
+use std::{str::FromStr, thread::sleep, time::Duration};
 
 use anyhow::Result;
 use log::{error, LevelFilter};
@@ -83,6 +83,7 @@ fn auto_compressor(_py: Python, m: &PyModule) -> PyResult<()> {
         log_panics::init();
         // Announce the start of the program to the logs
         log::info!("auto_compressor started");
+        sleep(Duration::from_secs(10));
 
         // Parse the default_level string into a LevelInfo struct
         let default_levels: LevelInfo = match default_levels.parse() {
