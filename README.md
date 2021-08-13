@@ -441,3 +441,13 @@ COMPRESSOR_LOG_LEVEL=auto_compressor=debug,synapse_compress_state=debug auto_com
 
 This will only print the debugging information from those two packages. For more info see 
 https://docs.rs/env_logger/0.9.0/env_logger/
+
+## Building difficulties
+
+Building the `openssl-sys` crate requires openssl development tools to be installed, and
+building on Linux will also require `pkg-config`  
+
+This can be done on Ubuntu  with: `$ apt-get install libssl-dev pkg-config`
+
+Note that building requires quite a lot of memory and out of memory errors might not be 
+obvious. It's reccomended you only build these tools on machines with at least 2GB of RAM
