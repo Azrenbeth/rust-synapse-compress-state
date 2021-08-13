@@ -82,10 +82,12 @@ pub fn run_compressor_on_room_chunk(
 
     // Check to see whether the compressor sent its changes to the database
     if !chunk_stats.commited {
-        warn!(
-            "The compressor tried to increase the number of rows in {} between {:?} and {}. Skipping...",
-            room_id, start, chunk_stats.last_compressed_group,
-        );
+        if chunk_stats.new_num_rows - chunk_stats.original_num_rows != 0 {
+            warn!(
+                "The compressor tried to increase the number of rows in {} between {:?} and {}. Skipping...",
+                room_id, start, chunk_stats.last_compressed_group,
+            );
+        }
 
         // Skip over the failed chunk and set the level info to the default (empty) state
         let write_result = write_room_compressor_state(
