@@ -65,6 +65,7 @@ impl FromStr for LevelInfo {
 fn auto_compressor(_py: Python, m: &PyModule) -> PyResult<()> {
     #[pyfn(m, compress_largest_rooms)]
     fn compress_largest_rooms(
+        py: Python,
         db_url: String,
         chunk_size: i64,
         default_levels: String,
@@ -83,7 +84,7 @@ fn auto_compressor(_py: Python, m: &PyModule) -> PyResult<()> {
         log_panics::init();
         // Announce the start of the program to the logs
         log::info!("auto_compressor started");
-        sleep(Duration::from_secs(10));
+        // sleep(Duration::from_secs(10));
 
         // Parse the default_level string into a LevelInfo struct
         let default_levels: LevelInfo = match default_levels.parse() {
@@ -97,12 +98,15 @@ fn auto_compressor(_py: Python, m: &PyModule) -> PyResult<()> {
         };
 
         // call compress_largest_rooms with the arguments supplied
-        let run_result = manager::compress_largest_rooms(
-            &db_url,
-            chunk_size,
-            &default_levels.0,
-            number_of_rooms,
-        );
+        let run_result = py.allow_threads(|| {
+            sleep(Duration::from_secs(10));
+            manager::compress_largest_rooms(
+                &db_url,
+                chunk_size,
+                &default_levels.0,
+                number_of_rooms,
+            )
+        });
 
         if let Err(e) = run_result {
             error!("{}", e);
