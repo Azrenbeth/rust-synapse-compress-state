@@ -6,7 +6,7 @@
 //! to the database and uses these to enable it to incrementally work
 //! on space reductions
 
-use std::{str::FromStr, thread::sleep, time::Duration};
+use std::str::FromStr;
 
 use anyhow::Result;
 use log::{error, LevelFilter};
@@ -71,6 +71,18 @@ fn auto_compressor(_py: Python, m: &PyModule) -> PyResult<()> {
         default_levels: String,
         number_of_rooms: i64,
     ) -> PyResult<()> {
+        // Stops the compressor from holding the GIL while running
+        py.allow_threads(|| {
+            compress_largest_rooms_body(db_url, chunk_size, default_levels, number_of_rooms)
+        })
+    }
+
+    fn compress_largest_rooms_body(
+        db_url: String,
+        chunk_size: i64,
+        default_levels: String,
+        number_of_rooms: i64,
+    ) -> PyResult<()> {
         let _ = Logger::default()
             // don't send out anything lower than a warning from other crates
             .filter(LevelFilter::Warn)
@@ -78,7 +90,7 @@ fn auto_compressor(_py: Python, m: &PyModule) -> PyResult<()> {
             // situations and provides better log messages
             .filter_target("synapse_compress_state".to_owned(), LevelFilter::Error)
             // log info and above for the auto_compressor
-            .filter_target("auto_compressor".to_owned(), LevelFilter::Debug)
+            .filter_target("auto_compressor".to_owned(), LevelFilter::Info)
             .install();
         // ensure any panics produce error messages in the log
         log_panics::init();
@@ -98,15 +110,12 @@ fn auto_compressor(_py: Python, m: &PyModule) -> PyResult<()> {
         };
 
         // call compress_largest_rooms with the arguments supplied
-        let run_result = py.allow_threads(|| {
-            sleep(Duration::from_secs(10));
-            manager::compress_largest_rooms(
-                &db_url,
-                chunk_size,
-                &default_levels.0,
-                number_of_rooms,
-            )
-        });
+        let run_result = manager::compress_largest_rooms(
+            &db_url,
+            chunk_size,
+            &default_levels.0,
+            number_of_rooms,
+        );
 
         if let Err(e) = run_result {
             error!("{}", e);
