@@ -40,18 +40,26 @@ pub fn create_tables_if_needed(client: &mut Client) -> Result<()> {
             level_num INT NOT NULL,
             max_size INT NOT NULL,
             current_length INT NOT NULL,
-            current_head BIGINT
+            current_head BIGINT,
+            UNIQUE (room_id, level_num)
         )"#;
 
     client.execute(create_state_table, &[])?;
 
+    let create_state_table_indexes = r#"
+        CREATE INDEX IF NOT EXISTS state_compressor_state_index ON state_compressor_state (room_id)"#;
+
+    client.execute(create_state_table_indexes, &[])?;
+
     let create_progress_table = r#"
         CREATE TABLE IF NOT EXISTS state_compressor_progress (
             room_id TEXT NOT NULL,
-            last_compressed BIGINT NOT NULL
+            last_compressed BIGINT NOT NULL,
+            UNIQUE (room_id)
         )"#;
 
     client.execute(create_progress_table, &[])?;
+
     Ok(())
 }
 
