@@ -451,3 +451,24 @@ This can be done on Ubuntu  with: `$ apt-get install libssl-dev pkg-config`
 
 Note that building requires quite a lot of memory and out of memory errors might not be 
 obvious. It's reccomended you only build these tools on machines with at least 2GB of RAM
+
+## Auto Compressor skips chunks when running on already compressed room
+
+If you delete the `state_compressor_state` or `state_compressor_progress` tables from the 
+database, the compressor will attempt to compress from the start again. With certain config
+options this will lead to lots of warnings of the form: `The compressor tried to increase 
+the number of rows in ...`
+
+To fix this ensure that the chunk_size is set to at least the L1 level size (so if the level
+sizes are "100,50,25" then the chunk_size should be at least 100)
+
+Note: if the level sizes being used when rerunning are different to when run previously
+this may lead to less efficient compression and thus chunks being skipped
+
+## Compressor is trying to increase the number of rows
+
+Backfilling can lead to issues with compression. The auto_compressor will
+skip chunks it can't reduce the size of and so this should help jump over the backfilled 
+state_groups, but otherwise there's not much that can be done.
+
+To examine the state_group heirarchy run the manual tool on a room with the `-g` option
