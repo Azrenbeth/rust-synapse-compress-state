@@ -17,6 +17,7 @@ jobs:
         with:
           profile: minimal
           toolchain: stable
+      - uses: Swatinem/rust-cache@v1
       - run: cd compressor_integration_tests && cargo test
 
 
