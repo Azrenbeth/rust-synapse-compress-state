@@ -20,7 +20,7 @@ jobs:
       - uses: Swatinem/rust-cache@v1
       - run: cd compressor_integration_tests && docker-compose up -d
       - run: docker ps -a
-      - run: docker logs postgres
+      - run: docker logs testing_database
       - run: cd compressor_integration_tests && cargo test
 
 
