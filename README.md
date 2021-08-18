@@ -65,7 +65,7 @@ but removing alice from the room is neither an addition or an overwriting). If i
 impossible to find a delta, then you just start from scratch again with a "snapshot" of
 the entire state. 
 
-(NOTE this might not be exactly how synapse handles leaving rooms but it works for illustrative
+(NOTE this is not documentation on how synapse handles leaving rooms but is purely for illustrative
 purposes)
 
 The state of a state group is worked out by following the previous state group's and adding
@@ -162,7 +162,7 @@ subsequent entry being for the next highest level. The number of entries in the
 list determines the number of levels that will be used. The sum of the sizes of
 the levels effect the performance of fetching the state from the database, as the
 sum of the sizes is the upper bound on number of iterations needed to fetch a
-given set of state. [default's to "100,50,25"]
+given set of state. [defaults to "100,50,25"]
 
 ## Scheduling the compressor
 Create the following script and save it somewhere sensible
@@ -301,7 +301,7 @@ subsequent entry being for the next highest level. The number of entries in the
 list determines the number of levels that will be used. The sum of the sizes of
 the levels effect the performance of fetching the state from the database, as the
 sum of the sizes is the upper bound on number of iterations needed to fetch a
- given set of state. [default's to "100,50,25"]
+ given set of state. [defaults to "100,50,25"]
 
 - -m [COUNT]  
 If the compressor cannot save this many rows from the database then it will stop early
