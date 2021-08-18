@@ -3,6 +3,7 @@ on:
   push:
     branches:
       - main
+      - azren/github_actions_integration_tests
 
 name: Continuous integration
 
