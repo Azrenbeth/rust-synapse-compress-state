@@ -18,7 +18,10 @@ jobs:
           profile: minimal
           toolchain: stable
       - uses: Swatinem/rust-cache@v1
-      - run: cd compressor_integration_tests && cargo build
+      - run: cd compressor_integration_tests && docker-compose up -d
+      - run: docker ps -a
+      - run: docker logs postgres
+      - run: cd compressor_integration_tests && cargo test
 
 
   # check:
