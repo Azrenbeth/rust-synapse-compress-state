@@ -1,7 +1,6 @@
 version: '3'
 services:
   postgres:
-    container_name: testing_database
     image: "postgres:latest"
     
     ports:
