@@ -18,9 +18,7 @@ jobs:
           profile: minimal
           toolchain: stable
       - run: cd compressor_integration_tests/
-      - uses: actions-rs/cargo@v1
-        with:
-          command: test
+      - run: cargo test
 
 
   # check:
