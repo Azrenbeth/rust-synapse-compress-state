@@ -1,6 +1,9 @@
-/target
+**/target
 **/*.rs.bk
 *.data
 *.old
-**.sql
+out.sql
 *.csv
+/tests/tmp/**
+**/*.sql
+**.log

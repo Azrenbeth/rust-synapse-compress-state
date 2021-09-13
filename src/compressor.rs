@@ -28,7 +28,8 @@
 //!  ^--- L1 <--- L1 <--- L1  ^--- L1 <--- L1 <--- L1
 //! ```
 
-use indicatif::{ProgressBar, ProgressStyle};
+// use indicatif::{ProgressBar, ProgressStyle};
+use log::debug;
 use state_map::StateMap;
 use std::collections::BTreeMap;
 use string_cache::DefaultAtom as Atom;
@@ -44,7 +45,7 @@ pub struct Level {
     /// to recursively following `current`
     current_chain_length: usize,
     /// The head of this level
-    current: Option<i64>,
+    head: Option<i64>,
 }
 
 impl Level {
@@ -53,16 +54,16 @@ impl Level {
         Level {
             max_length,
             current_chain_length: 0,
-            current: None,
+            head: None,
         }
     }
 
     /// Creates a new level from stored state
-    pub fn restore(max_length: usize, current_chain_length: usize, current: Option<i64>) -> Level {
+    pub fn restore(max_length: usize, current_chain_length: usize, head: Option<i64>) -> Level {
         Level {
             max_length,
             current_chain_length,
-            current,
+            head,
         }
     }
 
@@ -70,8 +71,8 @@ impl Level {
     /// that given state group will (probably) reference the previous head.
     ///
     /// Panics if `delta` is true and the level is already full.
-    fn update(&mut self, current: i64, delta: bool) {
-        self.current = Some(current);
+    fn update(&mut self, new_head: i64, delta: bool) {
+        self.head = Some(new_head);
 
         if delta {
             // If we're referencing the previous head then increment our chain
@@ -87,9 +88,19 @@ impl Level {
         }
     }
 
+    /// Get the max lenght of the level
+    pub fn get_max_length(&self) -> usize {
+        self.max_length
+    }
+
+    /// Get the current length of the level
+    pub fn get_current_length(&self) -> usize {
+        self.current_chain_length
+    }
+
     /// Get the current head of the level
-    pub fn get_current(&self) -> Option<i64> {
-        self.current
+    pub fn get_head(&self) -> Option<i64> {
+        self.head
     }
 
     /// Whether there is space in the current chain at this level. If not then a
@@ -142,12 +153,11 @@ impl<'a> Compressor<'a> {
     /// in which case the levels heads are also known
     pub fn compress_from_save(
         original_state_map: &'a BTreeMap<i64, StateGroupEntry>,
-        // level_info: &[(usize, usize, Option<i64>)],
         level_info: &[Level],
     ) -> Compressor<'a> {
         let levels = level_info
             .iter()
-            .map(|l| Level::restore((*l).max_length, (*l).current_chain_length, (*l).current))
+            .map(|l| Level::restore((*l).max_length, (*l).current_chain_length, (*l).head))
             .collect();
 
         let mut compressor = Compressor {
@@ -172,12 +182,11 @@ impl<'a> Compressor<'a> {
             panic!("Can only call `create_new_tree` once");
         }
 
-        let pb = ProgressBar::new(self.original_state_map.len() as u64);
-        pb.set_style(
-            ProgressStyle::default_bar().template("[{elapsed_precise}] {bar} {pos}/{len} {msg}"),
-        );
-        pb.set_message("state groups");
-        pb.enable_steady_tick(100);
+        // setup progress bar (in debug logs only)
+        let total_work = self.original_state_map.len() as f64;
+        let tick_work = total_work / 10.0;
+        let mut work_to_tick = tick_work;
+        let mut work_done = 0.0;
 
         for (&state_group, entry) in self.original_state_map {
             // Check whether this entry is in_range or is just present in the map due to being
@@ -194,40 +203,45 @@ impl<'a> Compressor<'a> {
                 // could probably be removed...
                 assert!(new_entry == *entry);
                 self.new_state_group_map.insert(state_group, new_entry);
-
-                continue;
-            }
-            let mut prev_state_group = None;
-            for level in &mut self.levels {
-                if level.has_space() {
-                    prev_state_group = level.get_current();
-                    level.update(state_group, true);
-                    break;
-                } else {
-                    level.update(state_group, false);
-                }
-            }
-
-            let (delta, prev_state_group) = if entry.prev_state_group == prev_state_group {
-                (entry.state_map.clone(), prev_state_group)
             } else {
-                self.stats.state_groups_changed += 1;
-                self.get_delta(prev_state_group, state_group)
-            };
+                let mut prev_state_group = None;
+                for level in &mut self.levels {
+                    if level.has_space() {
+                        prev_state_group = level.get_head();
+                        level.update(state_group, true);
+                        break;
+                    } else {
+                        level.update(state_group, false);
+                    }
+                }
 
-            self.new_state_group_map.insert(
-                state_group,
-                StateGroupEntry {
-                    in_range: true,
-                    prev_state_group,
-                    state_map: delta,
-                },
-            );
+                let (delta, prev_state_group) = if entry.prev_state_group == prev_state_group {
+                    (entry.state_map.clone(), prev_state_group)
+                } else {
+                    self.stats.state_groups_changed += 1;
+                    self.get_delta(prev_state_group, state_group)
+                };
 
-            pb.inc(1);
+                self.new_state_group_map.insert(
+                    state_group,
+                    StateGroupEntry {
+                        in_range: true,
+                        prev_state_group,
+                        state_map: delta,
+                    },
+                );
+            }
+
+            // update work_done and print debug info if needed
+            work_done += 1.0;
+            if work_done >= work_to_tick {
+                work_to_tick += tick_work;
+                debug!(
+                    "{:.0}% of groups compressed",
+                    work_done / total_work * 100.0
+                );
+            }
         }
-
-        pb.finish();
     }
 
     /// Attempts to calculate the delta between two state groups.

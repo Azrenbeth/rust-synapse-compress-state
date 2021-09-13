@@ -20,11 +20,8 @@
 // of arguments - this hopefully doesn't make the code unclear
 // #[allow(clippy::too_many_arguments)] is therefore used around some functions
 
+use log::{info, warn};
 use pyo3::{exceptions, prelude::*};
-
-#[cfg(feature = "jemalloc")]
-#[global_allocator]
-static GLOBAL: jemallocator::Jemalloc = jemallocator::Jemalloc;
 
 use clap::{crate_authors, crate_description, crate_name, crate_version, value_t, App, Arg};
 use indicatif::{ProgressBar, ProgressStyle};
@@ -294,7 +291,7 @@ impl Config {
 
 pub fn run(mut config: Config) {
     // First we need to get the current state groups
-    println!("Fetching state from DB for room '{}'...", config.room_id);
+    info!("Fetching state from DB for room '{}'...", config.room_id);
 
     let (state_group_map, max_group_found) = database::get_data_from_db(
         &config.db_url,
@@ -302,20 +299,22 @@ pub fn run(mut config: Config) {
         config.min_state_group,
         config.groups_to_compress,
         config.max_state_group,
-    );
-    println!("Fetched state groups up to {}", max_group_found);
+    )
+    .unwrap_or_else(|| panic!("No state groups found within this range"));
 
-    println!("Number of state groups: {}", state_group_map.len());
+    info!("Fetched state groups up to {}", max_group_found);
+
+    info!("Number of state groups: {}", state_group_map.len());
 
     let original_summed_size = state_group_map
         .iter()
         .fold(0, |acc, (_, v)| acc + v.state_map.len());
 
-    println!("Number of rows in current table: {}", original_summed_size);
+    info!("Number of rows in current table: {}", original_summed_size);
 
     // Now we actually call the compression algorithm.
 
-    println!("Compressing state...");
+    info!("Compressing state...");
 
     let compressor = Compressor::compress(&state_group_map, &config.level_sizes.0);
 
@@ -329,22 +328,22 @@ pub fn run(mut config: Config) {
 
     let ratio = (compressed_summed_size as f64) / (original_summed_size as f64);
 
-    println!(
+    info!(
         "Number of rows after compression: {} ({:.2}%)",
         compressed_summed_size,
         ratio * 100.
     );
 
-    println!("Compression Statistics:");
-    println!(
+    info!("Compression Statistics:");
+    info!(
         "  Number of forced resets due to lacking prev: {}",
         compressor.stats.resets_no_suitable_prev
     );
-    println!(
+    info!(
         "  Number of compressed rows caused by the above: {}",
         compressor.stats.resets_no_suitable_prev_size
     );
-    println!(
+    info!(
         "  Number of state groups changed: {}",
         compressor.stats.state_groups_changed
     );
@@ -354,14 +353,14 @@ pub fn run(mut config: Config) {
     }
 
     if ratio > 1.0 {
-        println!("This compression would not remove any rows. Exiting.");
+        warn!("This compression would not remove any rows. Exiting.");
         return;
     }
 
     if let Some(min) = config.min_saved_rows {
         let saving = (original_summed_size - compressed_summed_size) as i32;
         if saving < min {
-            println!(
+            warn!(
                 "Only {} rows would be saved by this compression. Skipping output.",
                 saving
             );
@@ -487,7 +486,7 @@ fn output_sql(
         return;
     }
 
-    println!("Writing changes...");
+    info!("Writing changes...");
 
     let pb = ProgressBar::new(old_map.len() as u64);
     pb.set_style(
@@ -514,6 +513,7 @@ fn output_sql(
 }
 
 /// Information about what compressor did to chunk that it was ran on
+#[derive(Debug)]
 pub struct ChunkStats {
     // The state of each of the levels of the compressor when it stopped
     pub new_level_info: Vec<Level>,
@@ -528,20 +528,23 @@ pub struct ChunkStats {
     pub commited: bool,
 }
 
+/// Loads a compressor state, runs it on a room and then returns info on how it got on
 pub fn continue_run(
-    start: i64,
+    start: Option<i64>,
     chunk_size: i64,
     db_url: &str,
     room_id: &str,
     level_info: &[Level],
-) -> ChunkStats {
+) -> Option<ChunkStats> {
     // First we need to get the current state groups
+    // If nothing was found then return None
     let (state_group_map, max_group_found) =
-        database::reload_data_from_db(db_url, room_id, Some(start), Some(chunk_size), level_info);
+        database::reload_data_from_db(db_url, room_id, start, Some(chunk_size), level_info)?;
 
     let original_num_rows = state_group_map.iter().map(|(_, v)| v.state_map.len()).sum();
 
     // Now we actually call the compression algorithm.
+    info!("Compressing state...");
     let compressor = Compressor::compress_from_save(&state_group_map, level_info);
     let new_state_group_map = &compressor.new_state_group_map;
 
@@ -552,48 +555,28 @@ pub fn continue_run(
 
     let ratio = (new_num_rows as f64) / (original_num_rows as f64);
 
-    println!(
-        "Number of rows after compression: {} ({:.2}%)",
-        new_num_rows,
-        ratio * 100.
-    );
-
-    println!("Compression Statistics:");
-    println!(
-        "  Number of forced resets due to lacking prev: {}",
-        compressor.stats.resets_no_suitable_prev
-    );
-    println!(
-        "  Number of compressed rows caused by the above: {}",
-        compressor.stats.resets_no_suitable_prev_size
-    );
-    println!(
-        "  Number of state groups changed: {}",
-        compressor.stats.state_groups_changed
-    );
-
     if ratio > 1.0 {
-        println!("This compression would not remove any rows. Aborting.");
-        return ChunkStats {
+        warn!("This compression would not remove any rows. Aborting.");
+        return Some(ChunkStats {
             new_level_info: compressor.get_level_info(),
             last_compressed_group: max_group_found,
             original_num_rows,
             new_num_rows,
             commited: false,
-        };
+        });
     }
 
     check_that_maps_match(&state_group_map, new_state_group_map);
 
     database::send_changes_to_db(db_url, room_id, &state_group_map, new_state_group_map);
 
-    ChunkStats {
+    Some(ChunkStats {
         new_level_info: compressor.get_level_info(),
         last_compressed_group: max_group_found,
         original_num_rows,
         new_num_rows,
         commited: true,
-    }
+    })
 }
 
 /// Compares two sets of state groups
@@ -614,14 +597,7 @@ fn check_that_maps_match(
     old_map: &BTreeMap<i64, StateGroupEntry>,
     new_map: &BTreeMap<i64, StateGroupEntry>,
 ) {
-    println!("Checking that state maps match...");
-
-    let pb = ProgressBar::new(old_map.len() as u64);
-    pb.set_style(
-        ProgressStyle::default_bar().template("[{elapsed_precise}] {bar} {pos}/{len} {msg}"),
-    );
-    pb.set_message("state groups");
-    pb.enable_steady_tick(100);
+    info!("Checking that state maps match...");
 
     // Now let's iterate through and assert that the state for each group
     // matches between the two versions.
@@ -630,8 +606,6 @@ fn check_that_maps_match(
         .try_for_each(|(sg, _)| {
             let expected = collapse_state_maps(old_map, *sg);
             let actual = collapse_state_maps(new_map, *sg);
-
-            pb.inc(1);
 
             if expected != actual {
                 println!("State Group: {}", sg);
@@ -644,9 +618,7 @@ fn check_that_maps_match(
         })
         .expect("expected state to match");
 
-    pb.finish();
-
-    println!("New state map matches old one");
+    info!("New state map matches old one");
 }
 
 /// Gets the full state for a given group from the map (of deltas)

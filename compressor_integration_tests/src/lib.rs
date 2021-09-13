@@ -1,9 +1,10 @@
+use log::LevelFilter;
 use openssl::ssl::{SslConnector, SslMethod, SslVerifyMode};
 use postgres::{fallible_iterator::FallibleIterator, Client};
 use postgres_openssl::MakeTlsConnector;
 use rand::{distributions::Alphanumeric, thread_rng, Rng};
 use state_map::StateMap;
-use std::{borrow::Cow, collections::BTreeMap, fmt};
+use std::{borrow::Cow, collections::BTreeMap, env, fmt};
 use string_cache::DefaultAtom as Atom;
 
 use synapse_compress_state::StateGroupEntry;
@@ -69,7 +70,7 @@ pub fn add_contents_to_database(room_id: &str, state_group_map: &BTreeMap<i64, S
     client.batch_execute(&sql).unwrap();
 }
 
-// Clears the contents of the testing database
+/// Clears the contents of the testing database
 pub fn empty_database() {
     // connect to the database
     let mut builder = SslConnector::builder(SslMethod::tls()).unwrap();
@@ -300,6 +301,23 @@ pub fn database_structure_matches_map(state_group_map: &BTreeMap<i64, StateGroup
     true
 }
 
+pub fn clear_compressor_state() {
+    // connect to the database
+    let mut builder = SslConnector::builder(SslMethod::tls()).unwrap();
+    builder.set_verify(SslVerifyMode::NONE);
+    let connector = MakeTlsConnector::new(builder.build());
+
+    let mut client = Client::connect(DB_URL, connector).unwrap();
+
+    // delete all the contents from the state compressor tables
+    let sql = r"
+        DELETE FROM state_compressor_state;
+        DELETE FROM state_compressor_progress;
+    ";
+
+    client.batch_execute(sql).unwrap();
+}
+
 #[test]
 fn functions_are_self_consistent() {
     let mut initial: BTreeMap<i64, StateGroupEntry> = BTreeMap::new();
@@ -333,4 +351,28 @@ fn functions_are_self_consistent() {
 
     assert!(database_collapsed_states_match_map(&initial));
     assert!(database_structure_matches_map(&initial));
+}
+
+pub fn setup_logger() {
+    // setup the logger for the auto_compressor
+    // The default can be overwritten with COMPRESSOR_LOG_LEVEL
+    // see the README for more information
+    if env::var("COMPRESSOR_LOG_LEVEL").is_err() {
+        let mut log_builder = env_logger::builder();
+        // set is_test(true) so that the output is hidden by cargo test (unless the test fails)
+        log_builder.is_test(true);
+        // default to printing the debug information for both packages being tested
+        // (Note that just setting the global level to debug will log every sql transaction)
+        log_builder.filter_module("synapse_compress_state", LevelFilter::Debug);
+        log_builder.filter_module("auto_compressor", LevelFilter::Debug);
+        // use try_init() incase the logger has been setup by some previous test
+        let _ = log_builder.try_init();
+    } else {
+        // If COMPRESSOR_LOG_LEVEL was set then use that
+        let mut log_builder = env_logger::Builder::from_env("COMPRESSOR_LOG_LEVEL");
+        // set is_test(true) so that the output is hidden by cargo test (unless the test fails)
+        log_builder.is_test(true);
+        // use try_init() incase the logger has been setup by some previous test
+        let _ = log_builder.try_init();
+    }
 }
